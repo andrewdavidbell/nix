@@ -8,7 +8,7 @@
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
   };
 
-  outputs = inputs@{ self, nix-darwin, nixpkgs, nix-homebrew }:
+  outputs = inputs@{ self, nixpkgs, nix-darwin, nix-homebrew }:
   let
     configuration = { pkgs, ... }: {
       # List packages installed in system profile. To search by name, run:
@@ -55,18 +55,36 @@
           pkgs.nerd-fonts.jetbrains-mono
         ];
 
-        #      homebrew = {
-        #        enable = true;
-        #        casks = [
-        #          "name"
-        #        ];
-        #        masApps = {
-        #          "name" = 123345
-        #        };
-        #        onActivation.cleanup = "none";
-        #        onActivation.autoUpdate = true;
-        #        onActivation.upgrade = true;
-        #      };
+      homebrew = {
+        enable = true;
+        brews = [
+          "nvm"
+        ];
+        casks = [
+          "anaconda"
+          "claude"
+          "comfyui"
+          "docker-desktop"
+          "figma"
+          "idrive"
+          "little-snitch"
+          "lm-studio"
+          "logi-options+"
+          "makemkv"
+          "micro-snitch"
+          "onyx"
+          "stellarium"
+          "synology-drive"
+          "vlc"
+        ];
+        masApps = {
+          "1Password for Safari" = 1569813296;
+          "AdGuard for Safari" = 1440147259;
+        };
+        onActivation.cleanup = "none";
+        onActivation.autoUpdate = true;
+        onActivation.upgrade = true;
+      };
 
         #      system.defaults = {
         #};
@@ -80,6 +98,9 @@
       # Set Git commit hash for darwin-version.
       system.configurationRevision = self.rev or self.dirtyRev or null;
 
+      # Set the primary user for backward compatibility with older nix-darwin options
+      system.primaryUser = "adbell";
+
       # Used for backwards compatibility, please read the changelog before changing.
       # $ darwin-rebuild changelog
       system.stateVersion = 6;
@@ -90,7 +111,7 @@
   in
   {
     # Build darwin flake using:
-    # $ darwin-rebuild build --flake .
+    # $ sudo darwin-rebuild build --flake .
     darwinConfigurations."Andrews-MacBook-Pro-M3" = nix-darwin.lib.darwinSystem {
       modules = [
         configuration
@@ -101,7 +122,7 @@
             enable = true;
 
             # Apple Silicon Only: Also install Homebrew under the default Intel prefix for Rosetta 2
-            enableRosetta = true;
+            enableRosetta = false;
 
             # User owning the Homebrew prefix
             user = "adbell";
