@@ -10,10 +10,10 @@ This repository manages macOS system and user configurations using Nix flakes, n
 ├── flake.lock                   # Flake lock file
 ├── darwinConfigurations/        # System-level configurations (per machine)
 │   ├── Andrews-MacBook-Pro-M3.nix
-│   └── Tests-Virtual-Machine.nix
+│   └── Testers-Virtual-Machine.nix
 ├── homeConfigurations/          # User-level configurations (per user)
 │   ├── adbell.nix
-│   └── testaccount.nix
+│   └── tester.nix
 └── darwinModules/               # Reusable Darwin modules
     └── nix-homebrew.nix
 ```
@@ -171,7 +171,7 @@ nix flake lock --update-input nixpkgs
 
 ### Testing Changes
 
-Use the test configurations (`Tests-Virtual-Machine` and `testaccount`) for experimental changes before applying to production configurations.
+Use the test configurations (`Testers-Virtual-Machine` and `tester`) for experimental changes before applying to production configurations.
 
 ## Important Constraints
 

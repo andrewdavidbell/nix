@@ -18,14 +18,14 @@
       darwinConfigurations = {
         Andrews-MacBook-Pro-M3 = import ./darwinConfigurations/Andrews-MacBook-Pro-M3.nix
           (flakeContext // { username = "adbell"; });
-        Tests-Virtual-Machine = import ./darwinConfigurations/Tests-Virtual-Machine.nix
-          (flakeContext // { username = "testaccount"; });
+        Testers-Virtual-Machine = import ./darwinConfigurations/Testers-Virtual-Machine.nix
+          (flakeContext // { username = "tester"; });
       };
       homeConfigurations = {
         adbell = import ./homeConfigurations/adbell.nix
           (flakeContext // { username = "adbell"; homeDirectory = "/Users/adbell"; });
-        testaccount = import ./homeConfigurations/testaccount.nix
-          (flakeContext // { username = "testaccount"; homeDirectory = "/Users/testaccount"; });
+        tester = import ./homeConfigurations/tester.nix
+          (flakeContext // { username = "tester"; homeDirectory = "/Users/tester"; });
       };
     };
 }
