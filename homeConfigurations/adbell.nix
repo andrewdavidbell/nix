@@ -17,7 +17,7 @@ let
           pkgs._1password-cli
           pkgs.awscli2
         ];
-        stateVersion = "25.05";
+        stateVersion = "25.11";
       };
       programs = {
         fzf = {
@@ -25,7 +25,7 @@ let
         };
         git = {
           enable = true;
-          extraConfig = {
+          settings = {
             core = {
               pager = "less -r";
             };
@@ -42,6 +42,10 @@ let
               autoStash = true;
               autoSquash = true;
             };
+            user = {
+              email = "8567862+andrewdavidbell@users.noreply.github.com";
+              name = "Andrew Bell";
+            };
           };
           ignores = [
             ".DS_Store"
@@ -54,8 +58,6 @@ let
             signByDefault = true;
             signer = "/Applications/Nix apps/1Password.app/Contents/MacOS/op-ssh-sign";
           };
-          userEmail = "8567862+andrewdavidbell@users.noreply.github.com";
-          userName = "Andrew Bell";
         };
         go = {
           enable = true;
