@@ -75,19 +75,59 @@ in
 
 - **Architecture:** `aarch64-darwin` (Apple Silicon)
 - **Darwin state version:** `6`
-- **Home-manager state version:** `"25.05"`
+- **Home-manager state version:** `"25.11"`
 - **Experimental features:** Flakes and nix-command are always enabled
 - **Nixpkgs config:** Unfree packages are allowed (`allowUnfree = true`)
 
 ### Package Management
 
-- **Nix packages:** Use `pkgs.*` for packages available in nixpkgs (preferred)
-- **Homebrew brews:** For CLI tools not in nixpkgs or requiring special compilation
+- **Nix packages:** Use `pkgs.*` for packages available in nixpkgs (preferred). Always check nixpkgs before reaching for a Homebrew brew.
+- **Homebrew brews:** Last resort — only for CLI tools genuinely absent from nixpkgs or requiring special compilation
 - **Homebrew casks:** For GUI applications, particularly those with auto-update mechanisms
 - **Homebrew settings:**
   - Auto-update enabled
   - Auto-upgrade enabled
-  - Cleanup set to `"none"` to preserve manually installed packages
+  - Cleanup set to `"uninstall"` — removes brews not declared in config on each activation (casks are left untouched)
+
+### Philosophy
+
+- Minimal tools installed natively to macOS; prefer Docker containers for development environments
+- Exceptions made for small Python or TypeScript projects (tools like `uv` are configured natively)
+
+### VSCode Extensions
+
+Extensions are managed in `homeConfigurations/` via `programs.vscode.extensions`. Two sources are used:
+
+- **nixpkgs** (`pkgs.vscode-extensions.*`): preferred — version is managed by the nixpkgs channel
+- **Marketplace** (`pkgs.vscode-utils.buildVscodeMarketplaceExtension`): for extensions absent from nixpkgs, pinned to a specific version with a SHA256 hash
+
+To update a marketplace extension, bump the `version` field and re-fetch the hash:
+```bash
+# For platform-independent extensions:
+nix-prefetch-url --unpack "https://marketplace.visualstudio.com/_apis/public/gallery/publishers/<publisher>/vsextensions/<name>/<version>/vspackage"
+
+# For darwin-arm64 specific extensions:
+nix-prefetch-url --unpack "https://marketplace.visualstudio.com/_apis/public/gallery/publishers/<publisher>/vsextensions/<name>/<version>/vspackage?targetPlatform=darwin-arm64"
+
+# Convert to SRI format:
+nix hash convert --to sri --type sha256 <hash>
+```
+
+### Shell Environment
+
+The following shell configuration is captured in `homeConfigurations/adbell.nix`:
+
+- **`home.sessionPath`:** `~/.local/bin` (uv) and `~/.cache/lm-studio/bin`
+- **`shellAliases`:** `ic` (iCloud Drive), `ob` (Obsidian vault)
+- **`initExtra`:** NVM initialisation, `vm()` neovim config selector, 1Password plugins source
+
+### Tester Configuration
+
+`homeConfigurations/tester.nix` mirrors `adbell.nix` exactly, with two exceptions:
+- No `git.settings.user` (email and name)
+- No `git.signing` (1Password not configured on the test VM)
+
+This allows the test VM to verify the full production configuration without carrying personal identity.
 
 ### Standard Configurations
 
@@ -171,12 +211,24 @@ nix flake lock --update-input nixpkgs
 
 ### Testing Changes
 
-Use the test configurations (`Testers-Virtual-Machine` and `tester`) for experimental changes before applying to production configurations.
+Use the test configurations (`Testers-Virtual-Machine` and `tester`) to verify changes before applying to production. The tester configuration mirrors production exactly except for git identity and signing (see Tester Configuration above).
+
+```bash
+# Build and activate on the test VM
+darwin-rebuild switch --flake .#Testers-Virtual-Machine
+home-manager switch --flake .#tester
+```
 
 ## Important Constraints
 
 - **Architecture:** All configurations target `aarch64-darwin` (Apple Silicon Macs)
 - **Git signing:** Configured to use 1Password SSH signing for git commits
+- **Git identity:** Name and email are intentionally absent from the repo. They live in `~/.gitconfig.local` on the machine, included via `programs.git.includes`. Create this file on any new machine:
+  ```ini
+  [user]
+      name = Your Name
+      email = you@example.com
+  ```
 - **Editor:** Neovim is set as the default editor
 - **Shell:** Zsh with oh-my-posh (powerlevel10k_rainbow theme) and antidote plugin manager
 
@@ -197,4 +249,4 @@ When modifying this repository:
 - **nix-darwin:** macOS system-level configuration
 - **home-manager:** User-level dotfiles and configuration
 - **nix-homebrew:** Declarative Homebrew package management
-- **nixpkgs-unstable:** Latest package versions from Nix package collection
+- **nixpkgs 25.11:** Stable package versions from Nix package collection (darwin channel)

@@ -29,6 +29,7 @@ let
         casks = [
           "anaconda"
           "claude"
+          "claude-code"
           "comfyui"
           "docker-desktop"
           "figma"
@@ -52,7 +53,7 @@ let
         # };
         onActivation = {
           autoUpdate = true;
-          cleanup = "none";
+          cleanup = "uninstall";
           upgrade = true;
         };
       };
