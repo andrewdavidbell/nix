@@ -89,45 +89,46 @@ let
         };
         vscode = {
           enable = true;
-          extensions = (with pkgs.vscode-extensions; [
-            anthropic.claude-code
-            bbenoist.nix
-            eamodio.gitlens
-            ms-azuretools.vscode-containers
-            ms-python.debugpy
-            ms-python.python
-            ms-python.vscode-pylance
-            ms-vscode-remote.remote-containers
-            saoudrizwan.claude-dev
-          ]) ++ (with pkgs.vscode-utils; [
-            (buildVscodeMarketplaceExtension {
-              mktplcRef = {
-                publisher = "continue";
-                name = "continue";
-                version = "1.2.16";
-                arch = "darwin-arm64";
-              };
-              sha256 = "sha256-EY/J1LR3Ia+SLmiiL1LSPHlPus2zi/HHT3RC7k0W+7Y=";
-            })
-            (buildVscodeMarketplaceExtension {
-              mktplcRef = {
-                publisher = "ms-python";
-                name = "vscode-python-envs";
-                version = "1.20.1";
-                arch = "darwin-arm64";
-              };
-              sha256 = "sha256-CPG+UwcbirUtddbAXcBw3kdTka5iRU7Y3JU34GupG24=";
-            })
-            (buildVscodeMarketplaceExtension {
-              mktplcRef = {
-                publisher = "vsls-contrib";
-                name = "gistfs";
-                version = "0.9.6";
-              };
-              sha256 = "sha256-p1HxLW29CFRnIhknlqoS+koY+pe4zrdqDBcj87dkHuU=";
-            })
-          ]);
-          userSettings = {
+          profiles.default = {
+            extensions = (with pkgs.vscode-extensions; [
+              anthropic.claude-code
+              bbenoist.nix
+              eamodio.gitlens
+              ms-azuretools.vscode-containers
+              ms-python.debugpy
+              ms-python.python
+              ms-python.vscode-pylance
+              ms-vscode-remote.remote-containers
+              saoudrizwan.claude-dev
+            ]) ++ (with pkgs.vscode-utils; [
+              (buildVscodeMarketplaceExtension {
+                mktplcRef = {
+                  publisher = "continue";
+                  name = "continue";
+                  version = "1.2.16";
+                  arch = "darwin-arm64";
+                };
+                sha256 = "sha256-EY/J1LR3Ia+SLmiiL1LSPHlPus2zi/HHT3RC7k0W+7Y=";
+              })
+              (buildVscodeMarketplaceExtension {
+                mktplcRef = {
+                  publisher = "ms-python";
+                  name = "vscode-python-envs";
+                  version = "1.20.1";
+                  arch = "darwin-arm64";
+                };
+                sha256 = "sha256-Cy1GBU0U08anuRKCoPcYQYZJWyH2H+Bcn7hMxVzRfLM=";
+              })
+              (buildVscodeMarketplaceExtension {
+                mktplcRef = {
+                  publisher = "vsls-contrib";
+                  name = "gistfs";
+                  version = "0.9.6";
+                };
+                sha256 = "sha256-p1HxLW29CFRnIhknlqoS+koY+pe4zrdqDBcj87dkHuU=";
+              })
+            ]);
+            userSettings = {
             "dev.containers.defaultExtensions" = [
               "eamodio.gitlens"
               "mutantdino.resourcemonitor"
@@ -228,6 +229,7 @@ let
             "python.analysis.typeCheckingMode" = "basic";
             "python.analysis.ignore" = [ "*" ];
             "claudeCode.useTerminal" = true;
+          };
           };
         };
         zsh = {

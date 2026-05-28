@@ -96,7 +96,7 @@ in
 
 ### VSCode Extensions
 
-Extensions are managed in `homeConfigurations/` via `programs.vscode.extensions`. Two sources are used:
+Extensions are managed in `homeConfigurations/` via `programs.vscode.profiles.default.extensions`. Two sources are used:
 
 - **nixpkgs** (`pkgs.vscode-extensions.*`): preferred — version is managed by the nixpkgs channel
 - **Marketplace** (`pkgs.vscode-utils.buildVscodeMarketplaceExtension`): for extensions absent from nixpkgs, pinned to a specific version with a SHA256 hash
