@@ -124,7 +124,7 @@ let
                 name = "gistfs";
                 version = "0.9.6";
               };
-              sha256 = "sha256-jSjhSdsRXxQh38REI+R0aZltSaM6GKnlza69AYgBSGc=";
+              sha256 = "sha256-p1HxLW29CFRnIhknlqoS+koY+pe4zrdqDBcj87dkHuU=";
             })
           ]);
           userSettings = {
