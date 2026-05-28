@@ -107,8 +107,8 @@ let
                   name = "continue";
                   version = "1.2.16";
                   arch = "darwin-arm64";
+                  hash = "sha256-EY/J1LR3Ia+SLmiiL1LSPHlPus2zi/HHT3RC7k0W+7Y=";
                 };
-                sha256 = "sha256-EY/J1LR3Ia+SLmiiL1LSPHlPus2zi/HHT3RC7k0W+7Y=";
               })
               (buildVscodeMarketplaceExtension {
                 mktplcRef = {
@@ -116,16 +116,16 @@ let
                   name = "vscode-python-envs";
                   version = "1.20.1";
                   arch = "darwin-arm64";
+                  hash = "sha256-Cy1GBU0U08anuRKCoPcYQYZJWyH2H+Bcn7hMxVzRfLM=";
                 };
-                sha256 = "sha256-Cy1GBU0U08anuRKCoPcYQYZJWyH2H+Bcn7hMxVzRfLM=";
               })
               (buildVscodeMarketplaceExtension {
                 mktplcRef = {
                   publisher = "vsls-contrib";
                   name = "gistfs";
                   version = "0.9.6";
+                  hash = "sha256-p1HxLW29CFRnIhknlqoS+koY+pe4zrdqDBcj87dkHuU=";
                 };
-                sha256 = "sha256-p1HxLW29CFRnIhknlqoS+koY+pe4zrdqDBcj87dkHuU=";
               })
             ]);
             userSettings = {

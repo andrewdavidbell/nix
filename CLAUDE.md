@@ -99,7 +99,7 @@ in
 Extensions are managed in `homeConfigurations/` via `programs.vscode.profiles.default.extensions`. Two sources are used:
 
 - **nixpkgs** (`pkgs.vscode-extensions.*`): preferred — version is managed by the nixpkgs channel
-- **Marketplace** (`pkgs.vscode-utils.buildVscodeMarketplaceExtension`): for extensions absent from nixpkgs, pinned to a specific version with a SHA256 hash
+- **Marketplace** (`pkgs.vscode-utils.buildVscodeMarketplaceExtension`): for extensions absent from nixpkgs, pinned to a specific version with a hash inside `mktplcRef`
 
 To update a marketplace extension, bump the `version` field and re-fetch the hash:
 ```bash
