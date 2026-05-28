@@ -120,7 +120,7 @@ let
                   name = "continue";
                   version = "1.2.16";
                   arch = "darwin-arm64";
-                  hash = "sha256-EY/J1LR3Ia+SLmiiL1LSPHlPus2zi/HHT3RC7k0W+7Y=";
+                  hash = "sha256-LX7PIUf/8//WJraABTw+1Awt2oj3Q8pFNt4xLQvYgvw=";
                 };
               })
               (buildVscodeMarketplaceExtension {
