@@ -270,6 +270,10 @@ let
           antidote = {
             enable = true;
             plugins = [
+              # Oh My Zsh
+              "getantidote/use-omz"
+              "ohmyzsh/ohmyzsh path:lib"
+              # Plugins
               "ohmyzsh/ohmyzsh path:plugins/1password"
               "ohmyzsh/ohmyzsh path:plugins/git"
               "ohmyzsh/ohmyzsh path:plugins/docker"
@@ -280,7 +284,9 @@ let
               "ohmyzsh/ohmyzsh path:plugins/npm"
               "ohmyzsh/ohmyzsh path:plugins/python"
               "ohmyzsh/ohmyzsh path:plugins/uv"
+              # Completions
               "zsh-users/zsh-completions kind:fpath path:src"
+              # Fish-like features
               "zdharma-continuum/fast-syntax-highlighting kind:defer"
               "zsh-users/zsh-autosuggestions"
               "zsh-users/zsh-history-substring-search"

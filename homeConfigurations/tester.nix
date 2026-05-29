@@ -21,6 +21,10 @@ let
           pkgs._1password-cli
         ];
         stateVersion = "25.11";
+        sessionPath = [
+          "${homeDirectory}/.local/bin"
+          "${homeDirectory}/.cache/lm-studio/bin"
+        ];
       };
       xdg.configFile = {
         "nvim/init.lua".source = ../nvim/init.lua;
@@ -239,9 +243,26 @@ let
             export ZSH_CACHE_DIR="$HOME/.cache/zsh"
             [[ -d "$ZSH_CACHE_DIR/completions" ]] || mkdir -p "$ZSH_CACHE_DIR/completions"
           '';
+          shellAliases = {
+            ic = "cd ~/Library/Mobile\\ Documents/com~apple~CloudDocs";
+            ob = "cd ~/Library/Mobile\\ Documents/iCloud~md~obsidian/Documents";
+          };
+          initExtra = ''
+            export NVM_DIR="$HOME/.nvm"
+            [[ -e "''${HOMEBREW_PREFIX}/opt/nvm/nvm.sh" ]] && source "''${HOMEBREW_PREFIX}/opt/nvm/nvm.sh"
+
+            vm() {
+              select config in kickstart lazyvim nvchad
+              do NVIM_APPNAME=nvim-$config nvim $@; break; done
+            }
+          '';
           antidote = {
             enable = true;
             plugins = [
+              # Oh My Zsh
+              "getantidote/use-omz"
+              "ohmyzsh/ohmyzsh path:lib"
+              # Plugins
               "ohmyzsh/ohmyzsh path:plugins/1password"
               "ohmyzsh/ohmyzsh path:plugins/git"
               "ohmyzsh/ohmyzsh path:plugins/docker"
@@ -252,7 +273,9 @@ let
               "ohmyzsh/ohmyzsh path:plugins/npm"
               "ohmyzsh/ohmyzsh path:plugins/python"
               "ohmyzsh/ohmyzsh path:plugins/uv"
+              # Completions
               "zsh-users/zsh-completions kind:fpath path:src"
+              # Fish-like features
               "zdharma-continuum/fast-syntax-highlighting kind:defer"
               "zsh-users/zsh-autosuggestions"
               "zsh-users/zsh-history-substring-search"
