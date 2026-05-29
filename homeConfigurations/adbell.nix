@@ -247,6 +247,11 @@ let
         };
         zsh = {
           enable = true;
+          initExtraFirst = ''
+            # Set up ZSH cache directory for oh-my-zsh plugins
+            export ZSH_CACHE_DIR="$HOME/.cache/zsh"
+            [[ -d "$ZSH_CACHE_DIR/completions" ]] || mkdir -p "$ZSH_CACHE_DIR/completions"
+          '';
           shellAliases = {
             ic = "cd ~/Library/Mobile\\ Documents/com~apple~CloudDocs";
             ob = "cd ~/Library/Mobile\\ Documents/iCloud~md~obsidian/Documents";
