@@ -23,8 +23,12 @@ let
         packages = [ pkgs.meslo-lgs-nf pkgs.nerd-fonts.jetbrains-mono ];
       };
       homebrew = {
+        taps = [
+          "jundot/omlx"
+        ];
         brews = [
           "nvm"
+          "omlx"
         ];
         casks = [
           "anaconda"
@@ -40,7 +44,6 @@ let
           "logi-options+"
           "makemkv"
           "micro-snitch"
-          "onyx"
           "stellarium"
           "synology-drive"
           "vlc"

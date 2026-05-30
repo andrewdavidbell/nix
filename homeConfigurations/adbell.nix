@@ -112,7 +112,7 @@ let
               ms-python.python
               ms-python.vscode-pylance
               ms-vscode-remote.remote-containers
-              saoudrizwan.claude-dev
+              tomoki1207.pdf
             ]) ++ (with pkgs.vscode-utils; [
               (buildVscodeMarketplaceExtension {
                 mktplcRef = {
