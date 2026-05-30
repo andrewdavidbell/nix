@@ -248,26 +248,28 @@ let
         };
         zsh = {
           enable = true;
-          initExtraFirst = ''
-            # Set up ZSH cache directory for oh-my-zsh plugins
-            export ZSH_CACHE_DIR="$HOME/.cache/zsh"
-            [[ -d "$ZSH_CACHE_DIR/completions" ]] || mkdir -p "$ZSH_CACHE_DIR/completions"
-          '';
           shellAliases = {
             ic = "cd ~/Library/Mobile\\ Documents/com~apple~CloudDocs";
             ob = "cd ~/Library/Mobile\\ Documents/iCloud~md~obsidian/Documents";
           };
-          initExtra = ''
-            export NVM_DIR="$HOME/.nvm"
-            [[ -e "''${HOMEBREW_PREFIX}/opt/nvm/nvm.sh" ]] && source "''${HOMEBREW_PREFIX}/opt/nvm/nvm.sh"
+          initContent = lib.mkMerge [
+            (lib.mkBefore ''
+              # Set up ZSH cache directory for oh-my-zsh plugins
+              export ZSH_CACHE_DIR="$HOME/.cache/zsh"
+              [[ -d "$ZSH_CACHE_DIR/completions" ]] || mkdir -p "$ZSH_CACHE_DIR/completions"
+            '')
+            ''
+              export NVM_DIR="$HOME/.nvm"
+              [[ -e "''${HOMEBREW_PREFIX}/opt/nvm/nvm.sh" ]] && source "''${HOMEBREW_PREFIX}/opt/nvm/nvm.sh"
 
-            vm() {
-              select config in kickstart lazyvim nvchad
-              do NVIM_APPNAME=nvim-$config nvim $@; break; done
-            }
+              vm() {
+                select config in kickstart lazyvim nvchad
+                do NVIM_APPNAME=nvim-$config nvim $@; break; done
+              }
 
-            [[ -e ~/.config/op/plugins.sh ]] && source ~/.config/op/plugins.sh
-          '';
+              [[ -e ~/.config/op/plugins.sh ]] && source ~/.config/op/plugins.sh
+            ''
+          ];
           antidote = {
             enable = true;
             plugins = [
