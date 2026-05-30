@@ -254,6 +254,7 @@ let
           shellAliases = {
             ic = "cd ~/Library/Mobile\\ Documents/com~apple~CloudDocs";
             ob = "cd ~/Library/Mobile\\ Documents/iCloud~md~obsidian/Documents";
+            src = "cd ~/Documents/Local\\ Source";
           };
           initContent = lib.mkMerge [
             (lib.mkBefore ''
@@ -262,12 +263,29 @@ let
               [[ -d "$ZSH_CACHE_DIR/completions" ]] || mkdir -p "$ZSH_CACHE_DIR/completions"
             '')
             ''
+              # 1Password SSH agent
+              export SSH_AUTH_SOCK=~/Library/Group\ Containers/2BUA8C4S2C.com.1password/t/agent.sock
+              export OP_BIOMETRIC_UNLOCK_ENABLED=true
+
+              # FluxCD credentials (1Password references)
+              export FLUXCD_TOKEN="op://Private/fgl2ajasfbzxslend4sqnowuui/token"
+              export FLUXCD_USERNAME="op://Private/fgl2ajasfbzxslend4sqnowuui/username"
+
               export NVM_DIR="$HOME/.nvm"
               [[ -e "''${HOMEBREW_PREFIX}/opt/nvm/nvm.sh" ]] && source "''${HOMEBREW_PREFIX}/opt/nvm/nvm.sh"
 
               vm() {
                 select config in kickstart lazyvim nvchad
                 do NVIM_APPNAME=nvim-$config nvim $@; break; done
+              }
+
+              genpass() {
+                if [[ -z "$1" || ! "$1" =~ ^[0-9]+$ ]]; then
+                  echo "Usage: genpass <length>"
+                  return 1
+                fi
+                pwgen -Bsy "$1" 1 | pbcopy
+                echo "Password copied to clipboard"
               }
 
               [[ -e ~/.config/op/plugins.sh ]] && source ~/.config/op/plugins.sh
