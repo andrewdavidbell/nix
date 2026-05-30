@@ -23,12 +23,10 @@ let
         packages = [ pkgs.meslo-lgs-nf pkgs.nerd-fonts.jetbrains-mono ];
       };
       homebrew = {
-        taps = [
-          "jundot/omlx"
-        ];
+        # Note: omlx is manually managed (requires git config before tap)
+        # brew tap jundot/omlx && brew install omlx
         brews = [
           "nvm"
-          "omlx"
         ];
         casks = [
           "anaconda"
