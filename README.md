@@ -52,9 +52,10 @@ home-manager switch --flake .#adbell
 ### Apply test VM configuration
 
 ```bash
-darwin-rebuild switch --flake .#Testers-Virtual-Machine
-home-manager switch --flake .#tester
+sudo --set-home darwin-rebuild switch --flake .#Testers-Virtual-Machine
 ```
+
+Note: `sudo --set-home` is required on the VM to preserve the user's home directory environment. The darwin configuration includes home-manager, so a separate `home-manager switch` is not needed.
 
 ### Update all flake inputs
 
