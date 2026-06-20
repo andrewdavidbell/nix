@@ -240,6 +240,7 @@ When modifying this repository:
 4. **Document changes:** Update this file if you add new patterns or conventions
 5. **Preserve integration:** Maintain the darwin ↔ home-manager integration pattern
 6. **Keep organised:** Put shared configuration in modules, machine-specific config in darwinConfigurations, user-specific config in homeConfigurations
+7. **Sync darwin configurations:** All changes to darwin configurations should be applied to both `Andrews-MacBook-Pro-M3.nix` and `Testers-Virtual-Machine.nix` unless there is a specific reason to differ (document any intentional differences with comments)
 
 ## Technologies Used
 
