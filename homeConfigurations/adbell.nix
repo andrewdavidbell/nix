@@ -2,7 +2,6 @@
 let
   homeModule = { config, lib, pkgs, ... }: {
     config = {
-      nixpkgs.config.allowUnfree = true;
       home = {
         username = lib.mkForce username;
         homeDirectory = lib.mkForce homeDirectory;
@@ -344,7 +343,10 @@ in
       modules = [
         homeModule
       ];
-      pkgs = inputs.nixpkgs.legacyPackages.aarch64-darwin;
+      pkgs = import inputs.nixpkgs {
+        system = "aarch64-darwin";
+        config = { allowUnfree = true; };
+      };
     }
   ) // { inherit nixosModule; }
 )
