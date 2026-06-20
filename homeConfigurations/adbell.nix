@@ -25,6 +25,9 @@ let
           "${homeDirectory}/.local/bin"
           "${homeDirectory}/.cache/lm-studio/bin"
         ];
+        sessionVariables = {
+          EDITOR = "nvim";
+        };
       };
       xdg.configFile = {
         "nvim/init.lua".source = ../nvim/init.lua;
