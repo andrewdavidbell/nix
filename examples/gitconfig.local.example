@@ -1,0 +1,10 @@
+# ~/.gitconfig.local
+# Git identity and signing key (not managed by Nix)
+#
+# Copy this file to ~/.gitconfig.local and update with your details.
+# This file is included by the Nix-managed git config.
+
+[user]
+  name = Your Name
+  email = your-email@example.com
+  signingkey = ssh-ed25519 AAAA...your-public-key-here

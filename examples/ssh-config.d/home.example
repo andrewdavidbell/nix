@@ -1,0 +1,57 @@
+# ~/.ssh/config.d/home
+# Private SSH hosts (not managed by Nix)
+#
+# Copy this file to ~/.ssh/config.d/home and update with your hosts.
+# Files in config.d/ are included by the Nix-managed SSH config.
+
+###############################################################################
+# GitHub (optional - works without this, but allows `ssh github`)
+###############################################################################
+Host github
+  Hostname github.com
+  User git
+  Port 22
+
+###############################################################################
+# Home Router
+###############################################################################
+Host router
+  Hostname router.home.arpa
+  User admin
+  Port 22
+
+###############################################################################
+# NAS / File Server
+###############################################################################
+Host nas
+  Hostname nas.home.arpa
+  User admin
+  Port 22
+  # Disable host key checking for devices that regenerate keys
+  # StrictHostKeyChecking no
+  # UserKnownHostsFile /dev/null
+
+###############################################################################
+# Homelab Nodes
+###############################################################################
+Host node1
+  Hostname node1.home.arpa
+  User ubuntu
+  PasswordAuthentication no
+
+Host node2
+  Hostname node2.home.arpa
+  User ubuntu
+  PasswordAuthentication no
+
+###############################################################################
+# Bastion / Jump Host (example)
+###############################################################################
+Host bastion
+  Hostname bastion.example.com
+  User jump-user
+  IdentityAgent none  # Use specific key instead of 1Password
+
+Host internal-*
+  ProxyJump bastion
+  User admin
