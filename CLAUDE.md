@@ -75,7 +75,7 @@ in
 
 - **Architecture:** `aarch64-darwin` (Apple Silicon)
 - **Darwin state version:** `6`
-- **Home-manager state version:** `"25.11"`
+- **Home-manager state version:** `"26.05"`
 - **Experimental features:** Flakes and nix-command are always enabled
 - **Nixpkgs config:** Unfree packages are allowed (`allowUnfree = true`)
 
@@ -247,4 +247,4 @@ When modifying this repository:
 - **nix-darwin:** macOS system-level configuration
 - **home-manager:** User-level dotfiles and configuration
 - **nix-homebrew:** Declarative Homebrew package management
-- **nixpkgs 25.11:** Stable package versions from Nix package collection (darwin channel)
+- **nixpkgs 26.05:** Stable package versions from Nix package collection (darwin channel)

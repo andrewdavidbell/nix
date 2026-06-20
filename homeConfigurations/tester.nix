@@ -21,7 +21,7 @@ let
           pkgs._1password-gui
           pkgs._1password-cli
         ];
-        stateVersion = "25.11";
+        stateVersion = "26.05";
         sessionPath = [
           "${homeDirectory}/.local/bin"
           "${homeDirectory}/.cache/lm-studio/bin"
