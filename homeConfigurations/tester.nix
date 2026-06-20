@@ -2,6 +2,7 @@
 let
   homeModule = { config, lib, pkgs, ... }: {
     config = {
+      nixpkgs.config.allowUnfree = true;
       home = {
         username = lib.mkForce username;
         homeDirectory = lib.mkForce homeDirectory;
@@ -45,6 +46,18 @@ let
       programs = {
         fzf = {
           enable = true;
+        };
+        ssh = {
+          enable = true;
+          enableDefaultConfig = false;
+          includes = [
+            "config.d/*"
+          ];
+          extraOptionOverrides = {
+            IdentityAgent = "\"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock\"";
+            # ServerAliveCountMax defaults to 3 so disconnect will occur after 3 minutes
+            ServerAliveInterval = "60";
+          };
         };
         git = {
           enable = true;

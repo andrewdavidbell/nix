@@ -123,11 +123,9 @@ The following shell configuration is captured in `homeConfigurations/adbell.nix`
 
 ### Tester Configuration
 
-`homeConfigurations/tester.nix` mirrors `adbell.nix` exactly, with two exceptions:
-- No `git.settings.user` (email and name)
-- No `git.signing` (1Password not configured on the test VM)
+`homeConfigurations/tester.nix` is identical to `adbell.nix`. Both configurations share the same git signing setup; git identity (name and email) is externalised to `~/.gitconfig.local` on each machine.
 
-This allows the test VM to verify the full production configuration without carrying personal identity.
+This allows the test VM to verify the full production configuration.
 
 ### Standard Configurations
 
@@ -211,7 +209,7 @@ nix flake lock --update-input nixpkgs
 
 ### Testing Changes
 
-Use the test configurations (`Testers-Virtual-Machine` and `tester`) to verify changes before applying to production. The tester configuration mirrors production exactly except for git identity and signing (see Tester Configuration above).
+Use the test configurations (`Testers-Virtual-Machine` and `tester`) to verify changes before applying to production. The tester configuration is identical to production (see Tester Configuration above).
 
 ```bash
 # Build and activate on the test VM
