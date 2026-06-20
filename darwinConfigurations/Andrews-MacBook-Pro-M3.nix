@@ -34,11 +34,13 @@ let
           "nvm"
           "omlx"
         ];
+        # Note: Some casks require manual permission grants in System Settings:
+        # - ghostty: Privacy & Security > App Management
         casks = [
           "anaconda"
           "claude"
           "claude-code"
-          "comfyui"
+          "comfy"
           "docker-desktop"
           "figma"
           "ghostty"
