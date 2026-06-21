@@ -32,10 +32,8 @@ let
       xdg.configFile = {
         "nvim/init.lua".source = ../nvim/init.lua;
         "nvim/.editorconfig".source = ../nvim/.editorconfig;
-        "nvim/lazy-lock.json" = {
-          source = ../nvim/lazy-lock.json;
-          force = true;
-        };
+        # lazy-lock.json not managed here — lazy.nvim creates it directly
+        # (home-manager symlinks are read-only, but lazy needs to write updates)
         "nvim/lua".source = ../nvim/lua;
         "nvim-kickstart/init.lua".source = ../nvim-kickstart/init.lua;
         "nvim-kickstart/lua".source = ../nvim-kickstart/lua;
