@@ -8,7 +8,6 @@ let
         packages = [
           pkgs.ansible
           pkgs.awscli2
-          pkgs.home-manager
           pkgs.discord
           pkgs.ffmpeg
           pkgs.fluxcd
