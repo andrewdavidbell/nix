@@ -23,17 +23,10 @@ let
         packages = [ pkgs.meslo-lgs-nf pkgs.nerd-fonts.jetbrains-mono ];
       };
       homebrew = {
-        taps = [
-          {
-            name = "jundot/omlx";
-            clone_target = "https://github.com/jundot/omlx";
-            force_auto_update = true;
-            trusted = true;
-          }
-        ];
+        # omlx excluded: python@3.11 bottle incompatible with macOS Tahoe's libexpat
+        # (missing _XML_SetAllocTrackerActivationThreshold symbol)
         brews = [
           "nvm"
-          "omlx"
         ];
         # Note: Some casks require manual permission grants in System Settings:
         # - ghostty: Privacy & Security > App Management
