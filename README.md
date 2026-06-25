@@ -40,22 +40,18 @@ A separate test configuration (`Testers-Virtual-Machine` / `tester`) mirrors the
 ### Apply system configuration
 
 ```bash
-darwin-rebuild switch --flake .#Andrews-MacBook-Pro-M3
+sudo --set-home darwin-rebuild switch --flake .#Andrews-MacBook-Pro-M3
 ```
 
-### Apply user configuration
+`darwin-rebuild switch` must be run as root. `sudo --set-home` preserves the user's home directory environment so home-manager activation resolves the correct paths. The darwin configuration includes home-manager, so a separate `home-manager switch` is not needed (and the standalone `home-manager` CLI is not installed).
 
-```bash
-home-manager switch --flake .#adbell
-```
+Pre-existing files that home-manager wants to manage (e.g. `~/.zshrc`, `~/.config/nvim*`) are backed up to `<name>.backup` on first activation rather than causing a conflict, via `home-manager.backupFileExtension`.
 
 ### Apply test VM configuration
 
 ```bash
 sudo --set-home darwin-rebuild switch --flake .#Testers-Virtual-Machine
 ```
-
-Note: `sudo --set-home` is required on the VM to preserve the user's home directory environment. The darwin configuration includes home-manager, so a separate `home-manager switch` is not needed.
 
 ### Update all flake inputs
 

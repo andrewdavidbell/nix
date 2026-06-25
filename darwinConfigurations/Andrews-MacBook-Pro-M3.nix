@@ -9,6 +9,9 @@ let
       {
         home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
+        # Back up pre-existing files that home-manager wants to manage (e.g.
+        # ~/.zshrc, ~/.config/nvim*) instead of failing activation on conflict.
+        home-manager.backupFileExtension = "backup";
       }
     ];
     config = {
@@ -63,7 +66,7 @@ let
         # };
         onActivation = {
           autoUpdate = true;
-          cleanup = "uninstall";
+          cleanup = "none";
           upgrade = true;
         };
       };

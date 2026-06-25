@@ -184,18 +184,17 @@ imports = [
 ### Building and Activating Configurations
 
 ```bash
-# Build darwin configuration
+# Build darwin configuration (no root needed)
 darwin-rebuild build --flake .#Andrews-MacBook-Pro-M3
 
-# Activate darwin configuration (system-wide changes)
-darwin-rebuild switch --flake .#Andrews-MacBook-Pro-M3
-
-# Build home-manager configuration
-home-manager build --flake .#adbell
-
-# Activate home-manager configuration (user changes)
-home-manager switch --flake .#adbell
+# Activate darwin configuration (system-wide changes) — must run as root
+sudo --set-home darwin-rebuild switch --flake .#Andrews-MacBook-Pro-M3
 ```
+
+`darwin-rebuild switch` must be run as root. `sudo --set-home` preserves the user's
+home directory environment so the integrated home-manager activation resolves the
+correct paths. Home-manager is applied as part of `darwin-rebuild` — the standalone
+`home-manager` CLI is not installed, so there is no separate `home-manager switch`.
 
 ### Updating Dependencies
 
@@ -212,9 +211,8 @@ nix flake lock --update-input nixpkgs
 Use the test configurations (`Testers-Virtual-Machine` and `tester`) to verify changes before applying to production. The tester configuration is identical to production (see Tester Configuration above).
 
 ```bash
-# Build and activate on the test VM
-darwin-rebuild switch --flake .#Testers-Virtual-Machine
-home-manager switch --flake .#tester
+# Build and activate on the test VM (home-manager is included via darwin-rebuild)
+sudo --set-home darwin-rebuild switch --flake .#Testers-Virtual-Machine
 ```
 
 ## Important Constraints
