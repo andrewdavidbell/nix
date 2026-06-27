@@ -218,12 +218,17 @@ sudo --set-home darwin-rebuild switch --flake .#Testers-Virtual-Machine
 ## Important Constraints
 
 - **Architecture:** All configurations target `aarch64-darwin` (Apple Silicon Macs)
-- **Git signing:** Configured to use 1Password SSH signing for git commits
-- **Git identity:** Name and email are intentionally absent from the repo. They live in `~/.gitconfig.local` on the machine, included via `programs.git.includes`. Create this file on any new machine:
+- **Git signing:** Configured to use 1Password SSH signing for git commits. The signer binary is the nix-store `op-ssh-sign` from `pkgs._1password-gui`; `programs.git.signing.key` is `null`, so the signing key is supplied via `~/.gitconfig.local` (below).
+- **Git identity:** Name, email, and signing key are intentionally absent from the repo. They live in `~/.gitconfig.local` on the machine, included via `programs.git.includes`. Create this file on any new machine:
   ```ini
   [user]
       name = Your Name
       email = you@example.com
+      signingkey = ssh-ed25519 AAAA...
+  ```
+- **Git signature verification:** `gpg.ssh.allowedSignersFile` points at `~/.config/git/allowed_signers` (path declared in the repo; content is machine-local identity, like `~/.gitconfig.local`). Create this file on any new machine so `git log --show-signature` can verify commits:
+  ```text
+  you@example.com namespaces="git" ssh-ed25519 AAAA...
   ```
 - **Editor:** Neovim is set as the default editor
 - **Shell:** Zsh with oh-my-posh (powerlevel10k_rainbow theme) and antidote plugin manager

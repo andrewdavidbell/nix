@@ -53,15 +53,16 @@ let
           includes = [
             "config.d/*"
           ];
-          # Emit these as a `Host *` block (matchBlocks."*"), which home-manager
+          # Emit these as a `Host *` block (settings."*"), which home-manager
           # renders *after* the includes. SSH uses the first value seen for each
           # option, so host-specific settings in `config.d/*` must come first and
           # win. `extraOptionOverrides` would emit them at the top of the file,
           # ahead of the Include, pre-empting config.d (e.g. GitHub auth).
-          matchBlocks."*" = {
-            identityAgent = "\"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock\"";
+          # settings uses freeform upstream directive names (capitalised).
+          settings."*" = {
+            IdentityAgent = "\"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock\"";
             # ServerAliveCountMax defaults to 3 so disconnect will occur after 3 minutes
-            serverAliveInterval = 60;
+            ServerAliveInterval = 60;
           };
         };
         git = {
@@ -83,6 +84,11 @@ let
               autoStash = true;
               autoSquash = true;
             };
+            # Verify SSH-signed commits against this file (committer email ->
+            # allowed public key). The path is shared; the file content is
+            # machine-local identity, created per machine like ~/.gitconfig.local
+            # (see CLAUDE.md).
+            gpg.ssh.allowedSignersFile = "~/.config/git/allowed_signers";
           };
           ignores = [
             ".DS_Store"
