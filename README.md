@@ -43,7 +43,7 @@ A separate test configuration (`Testers-Virtual-Machine` / `tester`) mirrors the
 sudo --set-home darwin-rebuild switch --flake .#Andrews-MacBook-Pro-M3
 ```
 
-`darwin-rebuild switch` must be run as root. `sudo --set-home` preserves the user's home directory environment so home-manager activation resolves the correct paths. The darwin configuration includes home-manager, so a separate `home-manager switch` is not needed (and the standalone `home-manager` CLI is not installed).
+`darwin-rebuild switch` must be run as root. The `--set-home` flag sets `$HOME` to root's home (`/var/root`) so the root-run activation doesn't leave root-owned files (nix caches, state) in the invoking user's home directory; home-manager resolves each user's home from `home.homeDirectory` in the config, not from `$HOME`, so it targets the correct user with or without the flag. The darwin configuration includes home-manager, so a separate `home-manager switch` is not needed (and the standalone `home-manager` CLI is not installed).
 
 Pre-existing files that home-manager wants to manage (e.g. `~/.zshrc`, `~/.config/nvim*`) are backed up to `<name>.backup` on first activation rather than causing a conflict, via `home-manager.backupFileExtension`.
 

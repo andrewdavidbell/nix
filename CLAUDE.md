@@ -191,10 +191,13 @@ darwin-rebuild build --flake .#Andrews-MacBook-Pro-M3
 sudo --set-home darwin-rebuild switch --flake .#Andrews-MacBook-Pro-M3
 ```
 
-`darwin-rebuild switch` must be run as root. `sudo --set-home` preserves the user's
-home directory environment so the integrated home-manager activation resolves the
-correct paths. Home-manager is applied as part of `darwin-rebuild` — the standalone
-`home-manager` CLI is not installed, so there is no separate `home-manager switch`.
+`darwin-rebuild switch` must be run as root. The `--set-home` flag sets `$HOME` to
+root's home (`/var/root`) so the root-run activation doesn't leave root-owned files
+(nix caches, state) in the invoking user's home directory; home-manager itself
+resolves each user's home from `home.homeDirectory` in the config, not from `$HOME`,
+so it targets the correct user with or without the flag. Home-manager is applied as
+part of `darwin-rebuild` — the standalone `home-manager` CLI is not installed, so
+there is no separate `home-manager switch`.
 
 ### Updating Dependencies
 
