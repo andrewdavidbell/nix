@@ -32,10 +32,8 @@ let
       xdg.configFile = {
         "nvim/init.lua".source = ../nvim/init.lua;
         "nvim/.editorconfig".source = ../nvim/.editorconfig;
-        "nvim/lazy-lock.json" = {
-          source = ../nvim/lazy-lock.json;
-          force = true;
-        };
+        # lazy-lock.json not managed here — lazy.nvim creates it directly
+        # (home-manager symlinks are read-only, but lazy needs to write updates)
         "nvim/lua".source = ../nvim/lua;
         "nvim-kickstart/init.lua".source = ../nvim-kickstart/init.lua;
         "nvim-kickstart/lua".source = ../nvim-kickstart/lua;
@@ -55,10 +53,15 @@ let
           includes = [
             "config.d/*"
           ];
-          extraOptionOverrides = {
-            IdentityAgent = "\"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock\"";
+          # Emit these as a `Host *` block (matchBlocks."*"), which home-manager
+          # renders *after* the includes. SSH uses the first value seen for each
+          # option, so host-specific settings in `config.d/*` must come first and
+          # win. `extraOptionOverrides` would emit them at the top of the file,
+          # ahead of the Include, pre-empting config.d (e.g. GitHub auth).
+          matchBlocks."*" = {
+            identityAgent = "\"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock\"";
             # ServerAliveCountMax defaults to 3 so disconnect will occur after 3 minutes
-            ServerAliveInterval = "60";
+            serverAliveInterval = 60;
           };
         };
         git = {

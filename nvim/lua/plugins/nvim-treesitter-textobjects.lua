@@ -1,21 +1,13 @@
 return {
     "nvim-treesitter/nvim-treesitter-textobjects",
+    branch = "main",
     dependencies = {
         "nvim-treesitter/nvim-treesitter",
     },
     config = function()
         require("nvim-treesitter-textobjects").setup({
             select = {
-                enable = true,
                 lookahead = true,
-                keymaps = {
-                    ["af"] = "@function.outer",
-                    ["if"] = "@function.inner",
-                    ["ac"] = "@class.outer",
-                    ["ao"] = "@comment.outer",
-                    ["ic"] = { query = "@class.inner", desc = "Select inner part of a class region" },
-                    ["as"] = { query = "@local.scope", query_group = "locals", desc = "Select language scope" },
-                },
                 selection_modes = {
                     ['@parameter.outer'] = 'v',
                     ['@function.outer'] = 'V',
@@ -23,15 +15,39 @@ return {
                 },
                 include_surrounding_whitespace = true,
             },
-            swap = {
-                enable = true,
-                swap_next = {
-                    ["<leader>a"] = "@parameter.inner",
-                },
-                swap_previous = {
-                    ["<leader>A"] = "@parameter.inner",
-                },
+            move = {
+                set_jumps = true,
             },
         })
+
+        -- Select keymaps
+        local select = require("nvim-treesitter-textobjects.select")
+        vim.keymap.set({ "x", "o" }, "af", function()
+            select.select_textobject("@function.outer", "textobjects")
+        end, { desc = "Select outer part of a function region" })
+        vim.keymap.set({ "x", "o" }, "if", function()
+            select.select_textobject("@function.inner", "textobjects")
+        end, { desc = "Select inner part of a function region" })
+        vim.keymap.set({ "x", "o" }, "ac", function()
+            select.select_textobject("@class.outer", "textobjects")
+        end, { desc = "Select outer part of a class region" })
+        vim.keymap.set({ "x", "o" }, "ic", function()
+            select.select_textobject("@class.inner", "textobjects")
+        end, { desc = "Select inner part of a class region" })
+        vim.keymap.set({ "x", "o" }, "ao", function()
+            select.select_textobject("@comment.outer", "textobjects")
+        end, { desc = "Select outer part of a comment region" })
+        vim.keymap.set({ "x", "o" }, "as", function()
+            select.select_textobject("@local.scope", "locals")
+        end, { desc = "Select language scope" })
+
+        -- Swap keymaps
+        local swap = require("nvim-treesitter-textobjects.swap")
+        vim.keymap.set("n", "<leader>a", function()
+            swap.swap_next("@parameter.inner")
+        end, { desc = "Swap with next parameter" })
+        vim.keymap.set("n", "<leader>A", function()
+            swap.swap_previous("@parameter.inner")
+        end, { desc = "Swap with previous parameter" })
     end
 }
