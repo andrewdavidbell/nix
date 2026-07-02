@@ -15,6 +15,7 @@ let
           pkgs.google-cloud-sdk
           pkgs.jq
           pkgs.k3d
+          pkgs.mas
           pkgs.opencode
           pkgs.pwgen
           pkgs._1password-gui

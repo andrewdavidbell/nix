@@ -52,6 +52,9 @@ let
           "vlc"
         ];
         enable = true;
+        # masApps omitted: the test VM has no signed-in Mac App Store account.
+        # (masApps is disabled on production too — mas 7.0.0 breaks Homebrew
+        # Bundle; see Andrews-MacBook-Pro-M3.nix.)
         onActivation = {
           autoUpdate = true;
           cleanup = "uninstall";

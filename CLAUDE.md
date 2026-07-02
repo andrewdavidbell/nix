@@ -87,7 +87,7 @@ in
 - **Homebrew settings:**
   - Auto-update enabled
   - Auto-upgrade enabled
-  - Cleanup set to `"uninstall"` — removes brews not declared in config on each activation (casks are left untouched)
+  - Cleanup set to `"uninstall"` — on each activation, `brew bundle --cleanup` uninstalls **any** Homebrew formula or cask not in the declared config (and not a dependency of one), keeping only the declared Brewfile and its dependency closure. Declare anything you want to keep, or it will be removed.
 
 ### Philosophy
 

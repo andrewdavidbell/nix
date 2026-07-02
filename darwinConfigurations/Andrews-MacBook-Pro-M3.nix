@@ -59,14 +59,25 @@ let
           "vlc"
         ];
         enable = true;
-        # masApps requires Mac App Store sign-in — uncomment after signing in
+        # masApps disabled: Homebrew Bundle force-installs its own `mas`, and
+        # mas 7.0.0 (a breaking release) is incompatible with bundle's handling
+        # of already-installed apps, aborting activation. These apps are all
+        # already installed and the App Store keeps them updated. Re-enable if
+        # the mas/brew-bundle incompatibility is resolved; ids kept below.
         # masApps = {
         #   "1Password for Safari" = 1569813296;
         #   "AdGuard for Safari" = 1440147259;
+        #   "GarageBand" = 682658836;
+        #   "Hacktivate" = 6754342195;
+        #   "iMovie" = 408981434;
+        #   "Keynote" = 361285480;
+        #   "Numbers" = 361304891;
+        #   "Obsidian Web Clipper" = 6720708363;
+        #   "Pages" = 361309726;
         # };
         onActivation = {
           autoUpdate = true;
-          cleanup = "none";
+          cleanup = "uninstall";
           upgrade = true;
         };
       };
