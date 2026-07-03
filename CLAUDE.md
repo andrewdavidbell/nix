@@ -87,7 +87,7 @@ in
 - **Homebrew settings:**
   - Auto-update enabled
   - Auto-upgrade enabled
-  - Cleanup set to `"uninstall"` — on each activation, `brew bundle --cleanup` uninstalls **any** Homebrew formula or cask not in the declared config (and not a dependency of one), keeping only the declared Brewfile and its dependency closure. Declare anything you want to keep, or it will be removed.
+  - Cleanup differs per machine. The **test VM** uses `"uninstall"` — on each activation `brew bundle --cleanup` uninstalls **any** formula or cask not in the declared config (and not a dependency of one), keeping only the declared Brewfile and its dependency closure. **Production** uses `"none"`: `brew bundle cleanup` (used by both `"uninstall"` and `"zap"`) miscomputes the `omlx` custom-tap dependency closure, tries to remove `omlx`'s deps, and aborts every activation — so undeclared formulae are pruned manually there with `brew autoremove` (which respects `omlx`). The VM avoids this by excluding `omlx`.
 
 ### Philosophy
 

@@ -77,7 +77,14 @@ let
         # };
         onActivation = {
           autoUpdate = true;
-          cleanup = "uninstall";
+          # cleanup is "none" here (the test VM uses "uninstall"): `brew bundle
+          # cleanup` — used by both "uninstall" and "zap" — miscomputes the omlx
+          # (custom tap) dependency closure, tries to uninstall omlx's deps
+          # (python@3.11, openssl@3, ...), and brew refuses, aborting the batch
+          # atomically on every activation. Prune undeclared formulae manually
+          # with `brew autoremove` (which respects omlx). The VM excludes omlx,
+          # so cleanup = "uninstall" works there.
+          cleanup = "none";
           upgrade = true;
         };
       };
