@@ -18,7 +18,6 @@ let
           pkgs.mas
           pkgs.opencode
           pkgs.pwgen
-          pkgs._1password-gui
           pkgs._1password-cli
         ];
         stateVersion = "26.05";
@@ -103,7 +102,10 @@ let
             format = "ssh";
             key = null;
             signByDefault = true;
-            signer = "${pkgs._1password-gui}/Applications/1Password.app/Contents/MacOS/op-ssh-sign";
+            # 1Password is a Homebrew cask (it must live in /Applications
+            # proper for its integrity check), so op-ssh-sign is at the stable
+            # /Applications path, not a nix-store path.
+            signer = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign";
           };
         };
         go = {

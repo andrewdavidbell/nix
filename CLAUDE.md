@@ -221,7 +221,7 @@ sudo --set-home darwin-rebuild switch --flake .#Testers-Virtual-Machine
 ## Important Constraints
 
 - **Architecture:** All configurations target `aarch64-darwin` (Apple Silicon Macs)
-- **Git signing:** Configured to use 1Password SSH signing for git commits. The signer binary is the nix-store `op-ssh-sign` from `pkgs._1password-gui`; `programs.git.signing.key` is `null`, so the signing key is supplied via `~/.gitconfig.local` (below).
+- **Git signing:** Configured to use 1Password SSH signing for git commits. The signer binary is `op-ssh-sign` from the **1Password Homebrew cask** at `/Applications/1Password.app` — 1Password is the one GUI app kept as a cask rather than nixpkgs, because its integrity check requires running from `/Applications` proper (the `op` CLI stays in Nix via `pkgs._1password-cli`). `programs.git.signing.key` is `null`, so the signing key is supplied via `~/.gitconfig.local` (below).
 - **Git identity:** Name, email, and signing key are intentionally absent from the repo. They live in `~/.gitconfig.local` on the machine, included via `programs.git.includes`. Create this file on any new machine:
   ```ini
   [user]

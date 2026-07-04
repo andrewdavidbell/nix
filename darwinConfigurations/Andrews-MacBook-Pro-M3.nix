@@ -41,6 +41,11 @@ let
         # Note: Some casks require manual permission grants in System Settings:
         # - ghostty: Privacy & Security > App Management
         casks = [
+          # 1Password is a cask (not pkgs._1password-gui): it enforces an
+          # integrity check that requires running from /Applications proper,
+          # which the home-manager app dir can't satisfy. The op CLI stays in
+          # Nix (pkgs._1password-cli). This is the one GUI app kept as a cask.
+          "1password"
           "anaconda"
           "claude"
           "claude-code"
