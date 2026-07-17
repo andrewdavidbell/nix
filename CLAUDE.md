@@ -10,9 +10,11 @@ This repository manages macOS system and user configurations using Nix flakes, n
 ├── flake.lock                   # Flake lock file
 ├── darwinConfigurations/        # System-level configurations (per machine)
 │   ├── Andrews-MacBook-Pro-M3.nix
+│   ├── MacBookPro.nix           # Work machine (lean profile; OS user adbell)
 │   └── Testers-Virtual-Machine.nix
-├── homeConfigurations/          # User-level configurations (per user)
+├── homeConfigurations/          # User-level configurations (per user/machine)
 │   ├── adbell.nix
+│   ├── MacBookPro.nix           # Lean home config for the work machine
 │   └── tester.nix
 └── darwinModules/               # Reusable Darwin modules
     └── nix-homebrew.nix
@@ -126,6 +128,29 @@ The following shell configuration is captured in `homeConfigurations/adbell.nix`
 `homeConfigurations/tester.nix` is identical to `adbell.nix`. Both configurations share the same git signing setup; git identity (name and email) is externalised to `~/.gitconfig.local` on each machine.
 
 This allows the test VM to verify the full production configuration.
+
+### Work Machine Configuration (`MacBookPro`)
+
+`darwinConfigurations/MacBookPro` is the work machine (hostname `MacBookPro`). Its OS
+user is `adbell` — the same login as the personal M3 — but it needs its own leaner home
+config rather than reusing `adbell.nix`. Because the darwin ↔ home coupling normally
+resolves the home config by `${username}` (which would collide on `adbell`), this darwin
+config instead imports `inputs.self.homeConfigurations.MacBookPro.nixosModule` by explicit
+flake attribute. `homeConfigurations.MacBookPro` still sets `home-manager.users.adbell`, so
+the OS user is unchanged; only the flake attribute name differs. This is a deliberate
+deviation from the by-`${username}` pattern — keep the comment in the file explaining it.
+
+It shares the antidote/oh-my-posh Zsh setup, the neovim config, and the full VS Code config
+with `adbell.nix`, but runs a **lean work profile**:
+- **Plain git:** no 1Password SSH commit signing and no `allowed_signers` (identity still
+  comes from `~/.gitconfig.local`).
+- **No 1Password:** the SSH agent socket, `op` CLI, biometric env, and the `1password`
+  antidote plugin/cask are all dropped.
+- **Dropped personal bits:** FluxCD credential refs, personal aliases (`ic`/`ob`/`src`), and
+  the M3-only system packages (xld/utm/container). The `nvm` init and neovim `vm()` switcher
+  are kept.
+- **Homebrew** mirrors the M3's handling: the `jundot/omlx` tap plus `nvm`/`omlx` brews (neither
+  is in nixpkgs) and `cleanup = "none"` for the same omlx dependency-closure reason.
 
 ### Standard Configurations
 
@@ -246,7 +271,7 @@ When modifying this repository:
 4. **Document changes:** Update this file if you add new patterns or conventions
 5. **Preserve integration:** Maintain the darwin ↔ home-manager integration pattern
 6. **Keep organised:** Put shared configuration in modules, machine-specific config in darwinConfigurations, user-specific config in homeConfigurations
-7. **Sync darwin configurations:** All changes to darwin configurations should be applied to both `Andrews-MacBook-Pro-M3.nix` and `Testers-Virtual-Machine.nix` unless there is a specific reason to differ (document any intentional differences with comments)
+7. **Sync darwin configurations:** Changes to the production darwin configuration should be applied to both `Andrews-MacBook-Pro-M3.nix` and `Testers-Virtual-Machine.nix` (the test VM verifies production) unless there is a specific reason to differ — document any intentional differences with comments. `MacBookPro.nix` is a deliberately leaner work-machine profile and is **not** a sync target; only apply shared changes to it where they fit the lean profile.
 
 ## Technologies Used
 

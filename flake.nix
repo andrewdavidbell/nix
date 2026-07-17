@@ -20,12 +20,16 @@
           (flakeContext // { username = "adbell"; });
         Testers-Virtual-Machine = import ./darwinConfigurations/Testers-Virtual-Machine.nix
           (flakeContext // { username = "tester"; });
+        MacBookPro = import ./darwinConfigurations/MacBookPro.nix
+          (flakeContext // { username = "adbell"; });
       };
       homeConfigurations = {
         adbell = import ./homeConfigurations/adbell.nix
           (flakeContext // { username = "adbell"; homeDirectory = "/Users/adbell"; });
         tester = import ./homeConfigurations/tester.nix
           (flakeContext // { username = "tester"; homeDirectory = "/Users/tester"; });
+        MacBookPro = import ./homeConfigurations/MacBookPro.nix
+          (flakeContext // { username = "adbell"; homeDirectory = "/Users/adbell"; });
       };
     };
 }
