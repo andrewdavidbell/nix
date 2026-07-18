@@ -52,6 +52,7 @@ let
           "logi-options+"
           "makemkv"
           "micro-snitch"
+          "qlmarkdown"
           "stellarium"
           "synology-drive"
           "vlc"

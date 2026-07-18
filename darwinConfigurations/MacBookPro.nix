@@ -43,6 +43,7 @@ let
           "google-chrome"
           "logi-options+"
           "obsidian"
+          "qlmarkdown"
           "slack"
           "zoom"
         ];
