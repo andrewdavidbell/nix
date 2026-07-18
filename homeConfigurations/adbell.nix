@@ -1,6 +1,7 @@
 { inputs, username, homeDirectory, ... }@flakeContext:
 let
   homeModule = { config, lib, pkgs, ... }: {
+    imports = [ inputs.agentic-config.homeManagerModules.default ];
     config = {
       home = {
         username = lib.mkForce username;

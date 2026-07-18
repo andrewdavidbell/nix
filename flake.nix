@@ -7,6 +7,7 @@
     home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
+    agentic-config.url = "github:andrewdavidbell/agentic-config";
   };
   outputs = inputs:
     let

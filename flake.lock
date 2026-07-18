@@ -1,5 +1,20 @@
 {
   "nodes": {
+    "agentic-config": {
+      "locked": {
+        "lastModified": 1784363203,
+        "narHash": "sha256-3Ei+njwj7efu5rRXKatCdq+/XH4DeHMk81d/x7TOa+I=",
+        "owner": "andrewdavidbell",
+        "repo": "agentic-config",
+        "rev": "2ce782778680c98113c9ca6552d84c2d6c915627",
+        "type": "github"
+      },
+      "original": {
+        "owner": "andrewdavidbell",
+        "repo": "agentic-config",
+        "type": "github"
+      }
+    },
     "brew-src": {
       "flake": false,
       "locked": {
@@ -95,6 +110,7 @@
     },
     "root": {
       "inputs": {
+        "agentic-config": "agentic-config",
         "home-manager": "home-manager",
         "nix-darwin": "nix-darwin",
         "nix-homebrew": "nix-homebrew",
