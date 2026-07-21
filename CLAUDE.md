@@ -123,6 +123,27 @@ The following shell configuration is captured in `homeConfigurations/adbell.nix`
 - **`shellAliases`:** `ic` (iCloud Drive), `ob` (Obsidian vault)
 - **`initExtra`:** NVM initialisation, `vm()` neovim config selector, 1Password plugins source
 
+### Claude Code (`agentic-config`)
+
+Claude Code is configured by the external [`agentic-config`](https://github.com/andrewdavidbell/agentic-config)
+flake, imported in `homeConfigurations/adbell.nix` via
+`inputs.agentic-config.homeManagerModules.default`. That module owns everything
+under `~/.claude` (CLAUDE.md, skills, agents, hooks, MCP servers) plus the CLI
+itself — do **not** add `programs.claude-code` settings here; change them in the
+`agentic-config` repo and bump the flake input.
+
+- **`~/.claude/settings.json` is managed** (a read-only symlink into the store).
+  In-app `/model` changes therefore don't persist across sessions — the model is
+  pinned in `agentic-config`. Runtime state that *does* need to be writable is
+  unaffected: permission approvals live in `~/.claude/settings.local.json`
+  (git-ignored — see `programs.git.ignores` in `adbell.nix`) and app state in
+  `~/.claude.json`. On first activation an existing writable `settings.json` is
+  moved to `settings.json.backup` via `home-manager.backupFileExtension`.
+- **Commands on `$PATH`:** `claude` (Anthropic) and `claude-lmstudio` (points at
+  the local LM Studio server on `127.0.0.1:1234`, matching the
+  `~/.cache/lm-studio/bin` sessionPath entry above). Additional providers are
+  added in `agentic-config`, not here.
+
 ### Tester Configuration
 
 `homeConfigurations/tester.nix` is identical to `adbell.nix`. Both configurations share the same git signing setup; git identity (name and email) is externalised to `~/.gitconfig.local` on each machine.
