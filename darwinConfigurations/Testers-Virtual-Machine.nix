@@ -41,7 +41,6 @@ let
           "1password"
           "anaconda"
           "claude"
-          "claude-code"
           "comfy"
           "docker-desktop"
           "figma"
