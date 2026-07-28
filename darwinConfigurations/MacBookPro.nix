@@ -44,6 +44,7 @@ let
           "logi-options+"
           "obsidian"
           "qlmarkdown"
+          "rancher"
           "slack"
           "zoom"
         ];
