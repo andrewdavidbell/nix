@@ -19,6 +19,10 @@ let
           pkgs.mas
           pkgs.opencode
           pkgs.pwgen
+          # Required by nvim-treesitter's `main` branch, which compiles parsers
+          # at install time via the tree-sitter CLI (unlike `master`, which
+          # shipped precompiled .so files).
+          pkgs.tree-sitter
           pkgs._1password-cli
         ];
         stateVersion = "26.05";

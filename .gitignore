@@ -1,3 +1,7 @@
 # Nix build output symlink
 result
 result-*
+
+# nvim writes this to cwd when its RPC server can't start (e.g. sandboxed
+# headless runs where $TMPDIR is unwritable).
+nvim.log
