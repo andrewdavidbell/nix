@@ -264,6 +264,33 @@ Use the test configurations (`Testers-Virtual-Machine` and `tester`) to verify c
 sudo --set-home darwin-rebuild switch --flake .#Testers-Virtual-Machine
 ```
 
+## Troubleshooting
+
+See `docs/troubleshooting.md` for the human-facing walkthroughs; the section below is the quick reference for Claude.
+
+### `brew bundle` fails during `darwin-rebuild switch` → activation halts, symlinks don't flip
+
+**Symptom:** The `darwin-rebuild switch` output finishes with something like:
+
+```
+Error: Cask '<name>' definition is invalid: undefined method '<x>' for Cask '<name>'
+`brew bundle` failed! Failed to fetch <casks…>
+```
+
+Home-manager runs *after* the Homebrew bundle step in nix-darwin's activation, so a `brew bundle` failure aborts the whole activation before home-manager symlinks are updated. Repo edits in `homeConfigurations/`, `nvim/`, etc. therefore appear "not applied" even though the build succeeded.
+
+**Diagnosis:** `undefined method '<x>' for Cask` means the upstream tap ships a cask that uses a Cask DSL feature newer than the installed Homebrew. The tap tracks HEAD and can pull ahead of shipped Homebrew releases.
+
+**Fix (in order):**
+
+1. `brew update && brew --version`. If a newer Homebrew has landed since the last attempt, retry `switch`.
+2. Otherwise, comment out the offending cask in the affected `darwinConfigurations/<host>.nix`. Add a comment naming the failed method and the date, so future-you knows why it's disabled and when to try re-enabling.
+3. Re-run `sudo --set-home darwin-rebuild switch --flake .#<host>`.
+4. Verify a home-manager symlink flipped, e.g. `readlink ~/.config/nvim/lua` — the `/nix/store/<hash>-home-manager-files/...` prefix should differ from before.
+5. Re-enable the cask once Homebrew ships a version that recognises the method (`brew info --cask <name>` should stop erroring).
+
+**Cleanup-mode safety:** Dropping a cask from the declared list is safe on `Andrews-MacBook-Pro-M3.nix` and `MacBookPro.nix` (both `cleanup = "none"` — the installed app stays put). Do **not** use this workaround on `Testers-Virtual-Machine.nix` (`cleanup = "uninstall"` would remove the app on next activation).
+
 ## Important Constraints
 
 - **Architecture:** All configurations target `aarch64-darwin` (Apple Silicon Macs)
