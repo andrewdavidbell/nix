@@ -72,8 +72,9 @@ let
         };
         git = {
           enable = true;
-          # Plain git for the work machine: no 1Password SSH commit signing.
-          # Identity (name/email) is machine-local via ~/.gitconfig.local.
+          # Identity is machine-local via ~/.gitconfig.local, which may fan
+          # out to further per-directory includes (see git-config(1)
+          # `includeIf`).
           settings = {
             core = {
               pager = "less -r";
@@ -91,6 +92,9 @@ let
               autoStash = true;
               autoSquash = true;
             };
+            # Verify SSH-signed commits; file content is machine-local,
+            # like ~/.gitconfig.local. Matches the pattern in adbell.nix.
+            gpg.ssh.allowedSignersFile = "~/.config/git/allowed_signers";
           };
           ignores = [
             ".DS_Store"
