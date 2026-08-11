@@ -264,6 +264,21 @@ Use the test configurations (`Testers-Virtual-Machine` and `tester`) to verify c
 sudo --set-home darwin-rebuild switch --flake .#Testers-Virtual-Machine
 ```
 
+## Patterns
+
+Structural recipes for how config is arranged in this repo (as
+opposed to how to debug it). See `docs/patterns.md`.
+
+- **Managed base + writable local overlay** — pattern for tools where
+  home-manager owns the shared baseline but you also need a writable
+  local override slot (`~/.config/*` symlinks are read-only). Applied
+  to opencode via `OPENCODE_CONFIG` pointing at
+  `~/.config/opencode/local.jsonc`, activation-script-initialised to
+  `{}`. Also natively used by Claude Code (`settings.json` managed,
+  `settings.local.json` writable) and git identity (`~/.gitconfig.local`
+  via `programs.git.includes`). Use this shape before adding a new
+  tool's config to `xdg.configFile`.
+
 ## Troubleshooting
 
 See `docs/troubleshooting.md` for the human-facing walkthroughs; the section below is the quick reference for Claude.

@@ -32,7 +32,20 @@ let
         ];
         sessionVariables = {
           EDITOR = "nvim";
+          # Opencode merges this file over ~/.config/opencode/opencode.jsonc
+          # (the managed baseline). See `docs/patterns.md` — "Managed base +
+          # writable local overlay". The activation script below ensures it
+          # exists; it is intentionally not managed by home-manager so it
+          # stays writable and off-repo.
+          OPENCODE_CONFIG = "${homeDirectory}/.config/opencode/local.jsonc";
         };
+        activation.opencodeLocalOverlay = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+          overlay="${homeDirectory}/.config/opencode/local.jsonc"
+          if [ ! -e "$overlay" ]; then
+            mkdir -p "$(dirname "$overlay")"
+            echo '{}' > "$overlay"
+          fi
+        '';
       };
       xdg.configFile = {
         "nvim/init.lua".source = ../nvim/init.lua;
