@@ -9,6 +9,7 @@ let
           pkgs.awscli2
           pkgs.jq
           pkgs.llama-cpp
+          pkgs.lmstudio
           pkgs.opencode
           pkgs.ruff
           # Required by nvim-treesitter's `main` branch, which compiles parsers
@@ -21,6 +22,8 @@ let
         stateVersion = "26.05";
         sessionPath = [
           "${homeDirectory}/.local/bin"
+          "${homeDirectory}/.cache/lm-studio/bin"
+          "${homeDirectory}/.rd/bin"
         ];
         sessionVariables = {
           EDITOR = "nvim";
@@ -30,6 +33,9 @@ let
           # exists; it is intentionally not managed by home-manager so it
           # stays writable and off-repo.
           OPENCODE_CONFIG = "${homeDirectory}/.config/opencode/local.jsonc";
+
+          GOROOT = "${pkgs.go}/libexec";
+          GOPATH = "${toString config.home.homeDirectory}/Source/go";
         };
         activation.opencodeLocalOverlay = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
           overlay="${homeDirectory}/.config/opencode/local.jsonc"
@@ -269,6 +275,10 @@ let
         };
         zsh = {
           enable = true;
+          shellAliases = {
+            src = "cd ~/Documents/Local\\ Source";
+            dps = "docker ps | grep -v \"k8s_\"";
+          };
           initContent = lib.mkMerge [
             (lib.mkBefore ''
               # Set up ZSH cache directory for oh-my-zsh plugins

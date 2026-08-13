@@ -76,7 +76,7 @@ let
         };
       };
       system = {
-        configurationRevision = inputs.self.rev or inputs.self.dirtyRev or null;
+        configurationRevision = if inputs.self ? rev then inputs.self.rev else if inputs.self ? dirtyRev then inputs.self.dirtyRev else "";
         defaults = {
           menuExtraClock = {
             Show24Hour = true;
