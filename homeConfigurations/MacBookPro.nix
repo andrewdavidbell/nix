@@ -1,12 +1,14 @@
 { inputs, username, homeDirectory, ... }@flakeContext:
 let
   homeModule = { config, lib, pkgs, ... }: {
+    imports = [ inputs.agentic-config.homeManagerModules.default ];
     config = {
       home = {
         username = lib.mkForce username;
         homeDirectory = lib.mkForce homeDirectory;
         packages = [
           pkgs.awscli2
+          pkgs.google-cloud-sdk
           pkgs.jq
           pkgs.llama-cpp
           pkgs.lmstudio
