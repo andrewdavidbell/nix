@@ -2,11 +2,11 @@
   "nodes": {
     "agentic-config": {
       "locked": {
-        "lastModified": 1786942093,
-        "narHash": "sha256-m6XETnS6P5c/S5PobNsbJkb7b1oj/ha/Q+V0MRHL0ds=",
+        "lastModified": 1786952502,
+        "narHash": "sha256-6sKsUT7FspM5Xq+zlU6uasZgy25GWMVUDS2eVLpyezc=",
         "owner": "andrewdavidbell",
         "repo": "agentic-config",
-        "rev": "e76ebc347d5d32b61a5e7a0574662dd92742e61d",
+        "rev": "75555e89270fe5d77bffeed2fc1fcd5dc08792ee",
         "type": "github"
       },
       "original": {
