@@ -9,12 +9,6 @@ let
       inputs.agentic-config.homeManagerModules.default
     ];
     config = {
-      # Turn on the LM Studio writer (its cask is installed here); the
-      # Claude wiring stays on via the claude-code module's own default.
-      # omlx is intentionally not wired — small local models chatted via
-      # omlx are poor MCP tool-callers, and opencode + LM Studio already
-      # give us a local-model-with-MCP path.
-      programs.agenticConfig.mcp.forLmStudio = true;
       programs.agenticConfig.skills.enable = true;
       home = {
         username = lib.mkForce username;
@@ -41,7 +35,6 @@ let
         stateVersion = "26.05";
         sessionPath = [
           "${homeDirectory}/.local/bin"
-          "${homeDirectory}/.cache/lm-studio/bin"
         ];
         sessionVariables = {
           HOMEBREW_NO_ANALYTICS = 1;

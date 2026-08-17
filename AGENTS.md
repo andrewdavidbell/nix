@@ -119,7 +119,7 @@ nix hash convert --to sri --type sha256 <hash>
 
 The following shell configuration is captured in `homeConfigurations/adbell.nix`:
 
-- **`home.sessionPath`:** `~/.local/bin` (uv) and `~/.cache/lm-studio/bin`
+- **`home.sessionPath`:** `~/.local/bin` (uv)
 - **`shellAliases`:** `ic` (iCloud Drive), `ob` (Obsidian vault)
 - **`initExtra`:** NVM initialisation, `vm()` neovim config selector, 1Password plugins source
 
@@ -139,9 +139,7 @@ itself — do **not** add `programs.claude-code` settings here; change them in t
   (git-ignored — see `programs.git.ignores` in `adbell.nix`) and app state in
   `~/.claude.json`. On first activation an existing writable `settings.json` is
   moved to `settings.json.backup` via `home-manager.backupFileExtension`.
-- **Commands on `$PATH`:** `claude` (Anthropic) and `claude-lmstudio` (points at
-  the local LM Studio server on `127.0.0.1:1234`, matching the
-  `~/.cache/lm-studio/bin` sessionPath entry above). Additional providers are
+- **Commands on `$PATH`:** `claude` (Anthropic). Additional providers are
   added in `agentic-config`, not here.
 
 ### Tester Configuration

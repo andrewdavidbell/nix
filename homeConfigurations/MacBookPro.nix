@@ -7,13 +7,11 @@ let
       inputs.agentic-config.homeManagerModules.default
     ];
     config = {
-      # LM Studio (nix) is installed here. Docker Desktop is not —
-      # Rancher Desktop provides the `docker` CLI but ships no
-      # `docker mcp gateway` subcommand, so subtract MCP_DOCKER from
-      # the shared server list here.
+      # Docker Desktop is not installed here — Rancher Desktop provides
+      # the `docker` CLI but ships no `docker mcp gateway` subcommand, so
+      # subtract MCP_DOCKER from the shared server list here.
       programs.agenticConfig.mcp.servers =
         builtins.removeAttrs inputs.agentic-config.lib.mcpServers [ "MCP_DOCKER" ];
-      programs.agenticConfig.mcp.forLmStudio = true;
       programs.agenticConfig.skills.enable = true;
       home = {
         username = lib.mkForce username;
@@ -22,8 +20,6 @@ let
           pkgs.awscli2
           pkgs.google-cloud-sdk
           pkgs.jq
-          pkgs.llama-cpp
-          pkgs.lmstudio
           pkgs.opencode
           pkgs.ruff
           # Required by nvim-treesitter's `main` branch, which compiles parsers
@@ -36,7 +32,6 @@ let
         stateVersion = "26.05";
         sessionPath = [
           "${homeDirectory}/.local/bin"
-          "${homeDirectory}/.cache/lm-studio/bin"
           "${homeDirectory}/.rd/bin"
         ];
         sessionVariables = {

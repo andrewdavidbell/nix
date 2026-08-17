@@ -27,9 +27,9 @@ let
         stateVersion = "26.05";
         sessionPath = [
           "${homeDirectory}/.local/bin"
-          "${homeDirectory}/.cache/lm-studio/bin"
         ];
         sessionVariables = {
+          HOMEBREW_NO_ANALYTICS = 1;
           EDITOR = "nvim";
           # Opencode merges this file over ~/.config/opencode/opencode.jsonc
           # (the managed baseline). See `docs/patterns.md` — "Managed base +

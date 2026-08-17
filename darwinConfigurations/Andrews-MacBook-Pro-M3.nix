@@ -54,7 +54,6 @@ let
           "ghostty"
           "idrive"
           "little-snitch"
-          "lm-studio"
           "logi-options+"
           "makemkv"
           "micro-snitch"
