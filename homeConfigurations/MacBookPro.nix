@@ -1,8 +1,20 @@
 { inputs, username, homeDirectory, ... }@flakeContext:
 let
   homeModule = { config, lib, pkgs, ... }: {
-    imports = [ inputs.agentic-config.homeManagerModules.default ];
+    imports = [
+      # Claude Code module transitively imports mcp + skills from the same
+      # flake — no need to re-import (duplicate option declarations error).
+      inputs.agentic-config.homeManagerModules.default
+    ];
     config = {
+      # LM Studio (nix) is installed here. Docker Desktop is not —
+      # Rancher Desktop provides the `docker` CLI but ships no
+      # `docker mcp gateway` subcommand, so subtract MCP_DOCKER from
+      # the shared server list here.
+      programs.agenticConfig.mcp.servers =
+        builtins.removeAttrs inputs.agentic-config.lib.mcpServers [ "MCP_DOCKER" ];
+      programs.agenticConfig.mcp.forLmStudio = true;
+      programs.agenticConfig.skills.enable = true;
       home = {
         username = lib.mkForce username;
         homeDirectory = lib.mkForce homeDirectory;
@@ -28,6 +40,7 @@ let
           "${homeDirectory}/.rd/bin"
         ];
         sessionVariables = {
+          HOMEBREW_NO_ANALYTICS = 1;
           EDITOR = "nvim";
           # Opencode merges this file over ~/.config/opencode/opencode.jsonc
           # (the managed baseline). See `docs/patterns.md` — "Managed base +
@@ -59,7 +72,14 @@ let
         "nvim-lazynvim/lua".source = ../nvim-lazynvim/lua;
         "nvim-nvchad/init.lua".source = ../nvim-nvchad/init.lua;
         "nvim-nvchad/lua".source = ../nvim-nvchad/lua;
-        "opencode/opencode.jsonc".source = ../opencode/opencode.jsonc;
+        # Opencode baseline rendered from Nix so the MCP fragment merges in.
+        # See ../opencode/opencode-base.nix for the static provider/theme
+        # config; per-machine overrides go in ~/.config/opencode/local.jsonc.
+        "opencode/opencode.jsonc".text = builtins.toJSON (
+          (import ../opencode/opencode-base.nix) // {
+            mcp = config.programs.agenticConfig.mcp.opencodeConfig;
+          }
+        );
       };
       programs = {
         fzf = {

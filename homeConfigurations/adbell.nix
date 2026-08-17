@@ -1,8 +1,21 @@
 { inputs, username, homeDirectory, ... }@flakeContext:
 let
   homeModule = { config, lib, pkgs, ... }: {
-    imports = [ inputs.agentic-config.homeManagerModules.default ];
+    imports = [
+      # Claude Code module transitively imports the agent-agnostic mcp
+      # and skills modules from the same flake — no need to re-import
+      # them here (the module system rejects duplicate option declarations
+      # when the same file is imported via two different attribute paths).
+      inputs.agentic-config.homeManagerModules.default
+    ];
     config = {
+      # Turn on the LM Studio writer (its cask is installed here); the
+      # Claude wiring stays on via the claude-code module's own default.
+      # omlx is intentionally not wired — small local models chatted via
+      # omlx are poor MCP tool-callers, and opencode + LM Studio already
+      # give us a local-model-with-MCP path.
+      programs.agenticConfig.mcp.forLmStudio = true;
+      programs.agenticConfig.skills.enable = true;
       home = {
         username = lib.mkForce username;
         homeDirectory = lib.mkForce homeDirectory;
@@ -31,6 +44,7 @@ let
           "${homeDirectory}/.cache/lm-studio/bin"
         ];
         sessionVariables = {
+          HOMEBREW_NO_ANALYTICS = 1;
           EDITOR = "nvim";
           # Opencode merges this file over ~/.config/opencode/opencode.jsonc
           # (the managed baseline). See `docs/patterns.md` — "Managed base +
@@ -59,7 +73,16 @@ let
         "nvim-lazynvim/lua".source = ../nvim-lazynvim/lua;
         "nvim-nvchad/init.lua".source = ../nvim-nvchad/init.lua;
         "nvim-nvchad/lua".source = ../nvim-nvchad/lua;
-        "opencode/opencode.jsonc".source = ../opencode/opencode.jsonc;
+        # Opencode baseline is rendered from Nix so the MCP fragment
+        # (shared across every agent) is merged in. Static provider/theme
+        # config lives in ../opencode/opencode-base.nix; per-machine or
+        # personal overrides go in ~/.config/opencode/local.jsonc (see
+        # OPENCODE_CONFIG above).
+        "opencode/opencode.jsonc".text = builtins.toJSON (
+          (import ../opencode/opencode-base.nix) // {
+            mcp = config.programs.agenticConfig.mcp.opencodeConfig;
+          }
+        );
       };
       programs = {
         fzf = {
