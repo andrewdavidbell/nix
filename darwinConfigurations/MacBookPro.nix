@@ -46,6 +46,7 @@ let
           "qlmarkdown"
           "rancher"
           "slack"
+          "visual-studio-code"
           "zoom"
         ];
         enable = true;

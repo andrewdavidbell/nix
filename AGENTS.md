@@ -96,24 +96,23 @@ in
 - Minimal tools installed natively to macOS; prefer Docker containers for development environments
 - Exceptions made for small Python or TypeScript projects (tools like `uv` are configured natively)
 
-### VSCode Extensions
+### VS Code
 
-Extensions are managed in `homeConfigurations/` via `programs.vscode.profiles.default.extensions`. Two sources are used:
+VS Code is installed as the `visual-studio-code` Homebrew cask on every machine — not
+via `pkgs.vscode` and not via `programs.vscode`. Extensions, `settings.json`,
+keybindings, and snippets are **not** managed by home-manager; VS Code's built-in
+Settings Sync (backed by the user's GitHub account) owns that state and syncs it
+across machines. Editing settings via the UI therefore persists, and nothing in this
+repo touches `~/Library/Application Support/Code/User/settings.json` or
+`~/.vscode/extensions/`.
 
-- **nixpkgs** (`pkgs.vscode-extensions.*`): preferred — version is managed by the nixpkgs channel
-- **Marketplace** (`pkgs.vscode-utils.buildVscodeMarketplaceExtension`): for extensions absent from nixpkgs, pinned to a specific version with a hash inside `mktplcRef`
+Why not nix: home-manager renders `settings.json` as a read-only symlink, which
+conflicts with both the UI's write path and Settings Sync — both silently fight the
+symlink. Settings Sync is the better fit for user preferences edited interactively;
+nix is best for state you want frozen and diffed in git.
 
-To update a marketplace extension, bump the `version` field and re-fetch the hash:
-```bash
-# For platform-independent extensions:
-nix-prefetch-url --unpack "https://marketplace.visualstudio.com/_apis/public/gallery/publishers/<publisher>/vsextensions/<name>/<version>/vspackage"
-
-# For darwin-arm64 specific extensions:
-nix-prefetch-url --unpack "https://marketplace.visualstudio.com/_apis/public/gallery/publishers/<publisher>/vsextensions/<name>/<version>/vspackage?targetPlatform=darwin-arm64"
-
-# Convert to SRI format:
-nix hash convert --to sri --type sha256 <hash>
-```
+On a fresh machine, install the cask via `darwin-rebuild switch`, then sign in to
+Settings Sync to pull down extensions and settings.
 
 ### Shell Environment
 
@@ -122,6 +121,25 @@ The following shell configuration is captured in `homeConfigurations/adbell.nix`
 - **`home.sessionPath`:** `~/.local/bin` (uv)
 - **`shellAliases`:** `ic` (iCloud Drive), `ob` (Obsidian vault)
 - **`initExtra`:** NVM initialisation, `vm()` neovim config selector, 1Password plugins source
+
+### AWS CLI
+
+`pkgs.awscli2` is installed via nix in both `adbell.nix` and `MacBookPro.nix`, but
+`~/.aws/config` is deliberately **not** managed by home-manager — it is a machine-local
+file, created by hand on each machine (same handling as `~/.gitconfig.local`).
+
+The reason is that this repo is public and the SSO fields in `~/.aws/config` (AWS
+account IDs, SSO start URL / instance ID) are classified by AWS as *sensitive but not
+secret*. They do not grant access on their own, but publishing them lowers the recon
+cost for anyone targeting the account (enumeration, phishing that name-drops the
+account, cross-account policy abuse where trust is by account ID alone). Runtime SSO
+state under `~/.aws/sso/cache/` and `~/.aws/cli/cache/` is also off-repo — it contains
+bearer tokens and is populated by `aws sso login`.
+
+Do not add `xdg.configFile."aws/config"` (or a rendered-template equivalent) to this
+repo without first moving the account IDs and SSO start URL into an off-repo file
+read at activation time. The AWS config format has no native `include` directive, so
+the "managed base + writable local overlay" pattern below does not apply directly.
 
 ### Claude Code (`agentic-config`)
 
@@ -159,15 +177,15 @@ flake attribute. `homeConfigurations.MacBookPro` still sets `home-manager.users.
 the OS user is unchanged; only the flake attribute name differs. This is a deliberate
 deviation from the by-`${username}` pattern — keep the comment in the file explaining it.
 
-It shares the antidote/oh-my-posh Zsh setup, the neovim config, and the full VS Code config
-with `adbell.nix`, but runs a **lean work profile**:
+It shares the antidote/oh-my-posh Zsh setup and the neovim config with `adbell.nix`,
+but runs a **lean work profile**:
 - **Plain git:** no 1Password SSH commit signing and no `allowed_signers` (identity still
   comes from `~/.gitconfig.local`).
 - **No 1Password:** the SSH agent socket, `op` CLI, biometric env, and the `1password`
   antidote plugin/cask are all dropped.
-- **Dropped personal bits:** FluxCD credential refs, personal aliases (`ic`/`ob`/`src`), and
-  the M3-only system packages (xld/utm/container). The `nvm` init and neovim `vm()` switcher
-  are kept.
+- **Dropped personal bits:** FluxCD credential refs, the personal `ob` (Obsidian vault)
+  alias, and the M3-only system packages (xld/utm/container). The `ic` (iCloud Drive)
+  and `src` aliases, the `nvm` init, and the neovim `vm()` switcher are kept.
 - **Homebrew** mirrors the M3's handling: the `jundot/omlx` tap plus `nvm`/`omlx` brews (neither
   is in nixpkgs) and `cleanup = "none"` for the same omlx dependency-closure reason.
 

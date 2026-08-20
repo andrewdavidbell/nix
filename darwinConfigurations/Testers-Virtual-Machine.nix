@@ -53,6 +53,7 @@ let
           "qlmarkdown"
           "stellarium"
           "synology-drive"
+          "visual-studio-code"
           "vlc"
         ];
         enable = true;

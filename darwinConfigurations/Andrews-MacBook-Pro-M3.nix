@@ -60,6 +60,7 @@ let
           "qlmarkdown"
           "stellarium"
           "synology-drive"
+          "visual-studio-code"
           # "vlc" — temporarily dropped: upstream cask uses `command_wrapper`
           # DSL method not supported by Homebrew 6.0.1, breaking `brew bundle`.
           # cleanup = "none" here so the installed app is untouched. Re-enable
