@@ -7,11 +7,6 @@ let
       inputs.agentic-config.homeManagerModules.default
     ];
     config = {
-      # Docker Desktop is not installed here — Rancher Desktop provides
-      # the `docker` CLI but ships no `docker mcp gateway` subcommand, so
-      # subtract MCP_DOCKER from the shared server list here.
-      programs.agenticConfig.mcp.servers =
-        builtins.removeAttrs inputs.agentic-config.lib.mcpServers [ "MCP_DOCKER" ];
       programs.agenticConfig.skills.enable = true;
       home = {
         username = lib.mkForce username;
