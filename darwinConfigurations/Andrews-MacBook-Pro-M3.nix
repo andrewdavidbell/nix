@@ -52,6 +52,7 @@ let
           "docker-desktop"
           "figma"
           "ghostty"
+          "hermes-desktop"
           "idrive"
           "little-snitch"
           "logi-options+"

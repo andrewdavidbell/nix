@@ -169,6 +169,28 @@ itself — do **not** add `programs.claude-code` settings here; change them in t
   recipes per host. Currently: Obsidian (for Claude Code + OpenCode) and
   eBay (for Claude Desktop).
 
+### Hermes (Nous Research desktop agent)
+
+Hermes is installed as the `hermes-desktop` Homebrew cask on
+`Andrews-MacBook-Pro-M3` only — exploratory tool on the personal
+machine; any paid model backend (Nous Portal, direct provider API, or
+local endpoint) is billed to a personal account, so it stays off the
+work profile. The cask installs `Hermes.app` to `/Applications/`; the
+`hermes` CLI appears on first-app-launch or via Hermes's own installer.
+
+Everything under `~/.hermes/` (`config.yaml`, `.env`, `auth.json`,
+`SOUL.md`, `skills/`, `memories/`, `sessions/`) is **not** nix-managed.
+`hermes config set` and `hermes mcp add` both write to
+`~/.hermes/config.yaml`, and Hermes's config has no `include` directive,
+so the "managed base + writable overlay" pattern doesn't apply. Post-
+install steps (Portal OAuth, MCP-server adds mirroring
+`agentic-config/data/mcp-servers.nix`, symlinking shared skills) live
+in `docs/hermes-setup.md`.
+
+No `forHermes` module in `agentic-config` yet — revisit if Hermes
+earns daily-driver status. See the "Deferred" section of that doc for
+what a nix module would need to solve.
+
 ### Tester Configuration
 
 `homeConfigurations/tester.nix` is identical to `adbell.nix`. Both configurations share the same git signing setup; git identity (name and email) is externalised to `~/.gitconfig.local` on each machine.
