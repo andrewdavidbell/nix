@@ -39,6 +39,7 @@ let
         # Note: Some casks require manual permission grants in System Settings:
         # - ghostty: Privacy & Security > App Management
         casks = [
+          "brave-browser"
           "ghostty"
           "google-chrome"
           "logi-options+"
