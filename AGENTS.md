@@ -160,10 +160,11 @@ itself — do **not** add `programs.claude-code` settings here; change them in t
 - **Commands on `$PATH`:** `claude` (Anthropic). Additional providers are
   added in `agentic-config`, not here.
 - **Shared MCP servers** ship in `agentic-config`'s `data/mcp-servers.nix` —
-  currently `nixos`, `context7`, `aws-documentation`. All run as direct
-  processes (npx/uvx), so the list is portable across machines. Per-machine
-  disable via `builtins.removeAttrs` when overriding
-  `programs.agenticConfig.mcp.servers`.
+  currently `nixos`, `context7`, `aws-documentation`, `headroom`. All run as
+  direct processes (npx/uvx/local CLI), so the list is portable across
+  machines. Per-machine disable via `builtins.removeAttrs` when overriding
+  `programs.agenticConfig.mcp.servers`. `headroom` additionally requires the
+  CLI on `$PATH` — see `docs/headroom-setup.md` for the per-machine install.
 - **Machine-local MCP servers** (HTTP transport, secrets, or client-
   specific like Claude Desktop) live in `docs/mcp-manual.md` with one-time
   recipes per host. Currently: Obsidian (for Claude Code + OpenCode) and
