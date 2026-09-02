@@ -121,6 +121,12 @@ let
             init = {
               defaultBranch = "main";
             };
+            # Refuse to commit when no identity is configured, instead of
+            # falling back to git's auto-derived `$USER@$(hostname).local`.
+            # No-op here (~/.gitconfig.local always sets `[user]` on this
+            # machine) but load-bearing on the work box, where identity is
+            # routed by remote URL and a repo with no remote yet has none.
+            user.useConfigOnly = true;
             # Verify SSH-signed commits against this file (committer email ->
             # allowed public key). The path is shared; the file content is
             # machine-local identity, created per machine like ~/.gitconfig.local

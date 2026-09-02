@@ -113,6 +113,12 @@ let
             init = {
               defaultBranch = "main";
             };
+            # Refuse to commit when no identity is configured, instead of
+            # falling back to git's auto-derived `$USER@$(hostname).local`.
+            # Load-bearing here: identity is routed by remote URL via
+            # ~/.gitconfig.local, so `git init` with no remote yet resolves
+            # no `[user]` block and would otherwise silently misattribute.
+            user.useConfigOnly = true;
             # Verify SSH-signed commits; file content is machine-local,
             # like ~/.gitconfig.local. Matches the pattern in adbell.nix.
             gpg.ssh.allowedSignersFile = "~/.config/git/allowed_signers";
