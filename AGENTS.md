@@ -357,6 +357,30 @@ Home-manager runs *after* the Homebrew bundle step in nix-darwin's activation, s
 
 **Cleanup-mode safety:** Dropping a cask from the declared list is safe on `Andrews-MacBook-Pro-M3.nix` and `MacBookPro.nix` (both `cleanup = "none"` — the installed app stays put). Do **not** use this workaround on `Testers-Virtual-Machine.nix` (`cleanup = "uninstall"` would remove the app on next activation).
 
+### `brew bundle` fails with "circular dependency" → activation halts, symlinks don't flip
+
+**Symptom:** `darwin-rebuild switch` finishes with:
+
+```
+Error: Formulae dependency graph sorting failed (likely due to a circular dependency):
+<pair-A>: [... <pair-B> ...]
+<pair-B>: [... <pair-A> ...]
+```
+
+Same downstream consequence as the cask DSL failure above — home-manager symlinks don't flip.
+
+**Diagnosis:** Two installed formulae list each other in their local `INSTALL_RECEIPT.json` `runtime_dependencies`, usually after a `brew update` pulled one to a version whose dep list crosses over the other. On `cleanup = "none"` machines the cycle often persists because a **stale explicit install** — a formula removed from `brews = [...]` but never `brew uninstall`ed — keeps the cycled pair in the closure. `brew autoremove` will not clean stale roots whose receipts show `installed_on_request: true`.
+
+Homebrew's own diagnostic commands (`brew uses`, `brew leaves`) currently 404 on macOS 26 Tahoe (`packages.dunno_tahoe.jws.json` doesn't exist yet), so fall back to parsing `/opt/homebrew/Cellar/*/*/INSTALL_RECEIPT.json` locally — full recipe in `docs/troubleshooting.md`.
+
+**Fix (in order):**
+
+1. Break the cycle exactly as Homebrew suggests: `brew update && brew uninstall --ignore-dependencies --force <pair-A> <pair-B> && brew install <pair-A> <pair-B>`.
+2. If diagnosis found a stale root (declared nowhere in `brews`, `installed_on_request: true`): `brew uninstall <stale-root>` then `brew autoremove` to reap the subtree.
+3. Retry `sudo --set-home darwin-rebuild switch --flake .#<host>` and verify a home-manager symlink flipped.
+
+**Prevention:** on `cleanup = "none"` machines, when removing a brew from `brews = [...]`, `brew uninstall <name>` on that machine in the same commit — otherwise the formula and its dep closure survive indefinitely. The test VM's `cleanup = "uninstall"` masks this class of failure, so don't treat a green VM activation as a signal.
+
 ## Important Constraints
 
 - **Architecture:** All configurations target `aarch64-darwin` (Apple Silicon Macs)
