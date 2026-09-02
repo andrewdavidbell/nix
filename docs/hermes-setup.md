@@ -183,28 +183,35 @@ hermes mcp add aws-documentation --command uvx --args awslabs.aws-documentation-
 No automatic sync with `agentic-config` — if the shared list grows,
 re-run the corresponding `hermes mcp add` here.
 
-### 4. Seed the shared skills (optional, coding-flavoured)
+### 4. Skills
 
-`agentic-config`'s current skills (`tdd`, `design-patterns`) are also
-coding-shaped, so the same "pick what matches your use" applies. Skip
-this step if Hermes isn't for coding — Hermes generates its own skills
-at runtime anyway (that's its self-improvement pitch).
+Hermes is deliberately out-of-band from the shared-skills pattern in
+`docs/skills.md`. It expects a categorised layout at
+`~/.hermes/skills/<category>/<name>/SKILL.md` and manages its own
+library through the `hermes skills` package-manager (`install`,
+`browse`, `search`, `tap`, hub lockfile). Flat symlinks into
+`~/.hermes/skills/<name>/` — the shape used for Claude Code and
+OpenCode — are almost certainly not discovered here.
 
-If you do want them, symlink each skill directory from the checkout
-into `~/.hermes/skills/`, subdir-per-skill so Hermes-generated skills
-alongside don't collide:
+Two consequences:
 
-```bash
-mkdir -p ~/.hermes/skills
-for d in ~/Source/agentic-config/skills/*/; do
-  name=$(basename "$d")
-  [ -e ~/.hermes/skills/"$name" ] || ln -s "$d" ~/.hermes/skills/"$name"
-done
-```
+- **Third-party skills:** install through the hub with
+  `hermes skills install <identifier>` (GitHub-style `owner/repo/path`,
+  or a direct SKILL.md URL). Do not symlink from the shared
+  `~/.agents/skills/` tree — Hermes will not pick it up.
+- **Bespoke `agentic-config` skills:** no automatic way to surface
+  them in Hermes today. Publishing a personal tap
+  (`hermes skills tap add <owner>/<repo>`) is the intended path if
+  they ever need to live here; not worth the machinery until a
+  concrete need appears.
 
-Symlinks point into the git checkout (not the nix store), so bumps to
-`agentic-config` are picked up on next Hermes launch without a
-rebuild.
+Check what is already available before installing anything — Hermes
+ships a large builtin library (`hermes skills list`), including
+`humanizer`, `test-driven-development`, and many others.
+
+Project-local overrides (`./.hermes/skills/` and `./.agents/skills/`
+inside a project directory) do work, but require
+`hermes skills trust <repo>` first.
 
 ### 5. SOUL.md (optional)
 

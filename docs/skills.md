@@ -89,11 +89,9 @@ Hermes is deliberately out-of-band:
   `claude-code`/`opencode`/`codex` in `autonomous-ai-agents`). Check
   `hermes skills list` before installing anything.
 
-`docs/hermes-setup.md` §4 currently suggests flat symlinks from
-`agentic-config/skills/` into `~/.hermes/skills/`. That recipe was
-written before this discovery model was verified; it likely doesn't
-work as written and should be revisited (either delete it, or
-replace with `hermes skills install` for equivalents).
+See `docs/hermes-setup.md` §4 for the Hermes-side workflow
+(`hermes skills install`, hub taps, and why the shared
+`~/.agents/skills/` tree is invisible here).
 
 ### Open WebUI
 
@@ -116,7 +114,7 @@ separately; no sync with the file-based locations above.
 
 ### Related
 
-- `docs/hermes-setup.md` — Hermes setup (§4 pending revisit per above).
+- `docs/hermes-setup.md` §4 — Hermes's own skills flow.
 - `docs/patterns.md` — the managed-base/writable-overlay pattern
   used elsewhere for tools that don't allow read-only config.
 - `agentic-config/modules/skills.nix` — the XDG publishing module
