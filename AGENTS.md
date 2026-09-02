@@ -169,6 +169,9 @@ itself — do **not** add `programs.claude-code` settings here; change them in t
   specific like Claude Desktop) live in `docs/mcp-manual.md` with one-time
   recipes per host. Currently: Obsidian (for Claude Code + OpenCode) and
   eBay (for Claude Desktop).
+- **Skills** (bespoke and third-party) — per-harness locations and the
+  clone-and-symlink pattern for third-party skills live in
+  `docs/skills.md`.
 
 ### Hermes (Nous Research desktop agent)
 
