@@ -101,6 +101,9 @@ let
               autoStash = true;
               autoSquash = true;
             };
+            init = {
+              defaultBranch = "main";
+            };
             # Verify SSH-signed commits against this file (committer email ->
             # allowed public key). The path is shared; the file content is
             # machine-local identity, created per machine like ~/.gitconfig.local

@@ -110,6 +110,9 @@ let
               autoStash = true;
               autoSquash = true;
             };
+            init = {
+              defaultBranch = "main";
+            };
             # Verify SSH-signed commits; file content is machine-local,
             # like ~/.gitconfig.local. Matches the pattern in adbell.nix.
             gpg.ssh.allowedSignersFile = "~/.config/git/allowed_signers";
