@@ -43,6 +43,7 @@ let
           "ghostty"
           "google-chrome"
           "logi-options+"
+          "microsoft-teams"
           "obsidian"
           "qlmarkdown"
           "rancher"
