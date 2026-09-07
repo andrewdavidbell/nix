@@ -10,6 +10,9 @@ let
     ];
     config = {
       programs.agenticConfig.skills.enable = true;
+      # Opencode is installed on this machine (pkgs.opencode below), so wire
+      # in the TDD sub-agents, /tdd slash command, and phase-guard plugin.
+      programs.agenticConfig.opencode.tdd.enable = true;
       home = {
         username = lib.mkForce username;
         homeDirectory = lib.mkForce homeDirectory;
