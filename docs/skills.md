@@ -27,6 +27,7 @@ Hermes has its own hub layout and stays out-of-band (see below).
 | --- | --- | --- |
 | OpenCode (≥ 1.15) | `~/.agents/skills/<name>/` (also `~/.config/opencode/skills/`, `~/.claude/skills/`) | Canonical path — no wiring needed |
 | Claude Code | `~/.claude/skills/<name>/` only | `programs.claude-code.skills.*` in `agentic-config` for bespoke; symlink `~/.claude/skills/<name>` → `~/.agents/skills/<name>` for third-party |
+| Kiro | `~/.kiro/skills/<name>/` (global), `.kiro/skills/` (workspace) | `agents.kiro.enable = true` in `agentic-config` links the bespoke skills in; third-party need a manual symlink from `~/.agents/skills/` |
 | Hermes | `~/.hermes/skills/<category>/<name>/` (hub-managed) | Out-of-band — install via `hermes skills install <identifier>`, not by symlinking. See "Hermes" below |
 | Open WebUI | Not file-based | Import each skill via the Open WebUI admin panel per install |
 
@@ -42,6 +43,22 @@ ln -s "$HOME/Documents/Local Source/<repo>/Skills/<skill>" ~/.agents/skills/<ski
 # Point Claude Code at it (OpenCode already sees ~/.agents/skills/).
 ln -s ~/.agents/skills/<skill> ~/.claude/skills/<skill>
 ```
+
+### Kiro
+
+Kiro adopted the Agent Skills standard in February 2026, so `SKILL.md`
+directories work unmodified — only the discovery path differs. Bespoke
+skills are linked automatically by `agentic-config`'s kiro module
+(`~/.kiro/skills/<name>` → the skills source in the store). Kiro does
+**not** read `~/.agents/skills/` or `~/.claude/skills/`, so third-party
+skills adopted via the recipe above need one extra link per skill:
+
+```bash
+ln -s ~/.agents/skills/<skill> ~/.kiro/skills/<skill>
+```
+
+Kiro also supports `AGENTS.md`-format steering at `~/.kiro/steering/`
+(global) and `.kiro/steering/` (workspace) — not currently managed.
 
 Currently linked on this machine (Andrews-MacBook-Pro-M3):
 

@@ -2,15 +2,22 @@
 let
   homeModule = { config, lib, pkgs, ... }: {
     imports = [
-      # Claude Code module transitively imports mcp + skills from the same
-      # flake — no need to re-import (duplicate option declarations error).
+      # Neutral entrypoint: pulls in the shared MCP + skills modules and every
+      # agent module. Nothing is wired until an agent is enabled below.
       inputs.agentic-config.homeManagerModules.default
     ];
     config = {
       programs.agenticConfig.skills.enable = true;
-      # Opencode is installed on this machine (pkgs.opencode below), so wire
-      # in the TDD sub-agents, /tdd slash command, and phase-guard plugin.
-      programs.agenticConfig.opencode.tdd.enable = true;
+      # Agent config (MCP servers, skills, subagents, baseline files) is owned
+      # by the agentic-config flake; this repo only declares which agents the
+      # machine runs. Agent *packages* stay in home.packages below.
+      programs.agenticConfig.agents.claude.enable = true;
+      programs.agenticConfig.agents.opencode.enable = true;
+      # Kiro is the `kiro` cask in darwinConfigurations/MacBookPro.nix. It is
+      # AWS-account-backed, so it stays off the personal M3 and the test VM.
+      # Note agentic-config cannot assert the cask is present -- enabling this
+      # without the cask just lays down config nothing reads.
+      programs.agenticConfig.agents.kiro.enable = true;
       home = {
         username = lib.mkForce username;
         homeDirectory = lib.mkForce homeDirectory;
@@ -36,23 +43,9 @@ let
         sessionVariables = {
           HOMEBREW_NO_ANALYTICS = 1;
           EDITOR = "nvim";
-          # Opencode merges this file over ~/.config/opencode/opencode.jsonc
-          # (the managed baseline). See `docs/patterns.md` — "Managed base +
-          # writable local overlay". The activation script below ensures it
-          # exists; it is intentionally not managed by home-manager so it
-          # stays writable and off-repo.
-          OPENCODE_CONFIG = "${homeDirectory}/.config/opencode/local.jsonc";
-
           GOROOT = "${pkgs.go}/libexec";
           GOPATH = "${toString config.home.homeDirectory}/Source/go";
         };
-        activation.opencodeLocalOverlay = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-          overlay="${homeDirectory}/.config/opencode/local.jsonc"
-          if [ ! -e "$overlay" ]; then
-            mkdir -p "$(dirname "$overlay")"
-            echo '{}' > "$overlay"
-          fi
-        '';
       };
       xdg.configFile = {
         "nvim/init.lua".source = ../nvim/init.lua;
@@ -66,14 +59,6 @@ let
         "nvim-lazynvim/lua".source = ../nvim-lazynvim/lua;
         "nvim-nvchad/init.lua".source = ../nvim-nvchad/init.lua;
         "nvim-nvchad/lua".source = ../nvim-nvchad/lua;
-        # Opencode baseline rendered from Nix so the MCP fragment merges in.
-        # See ../opencode/opencode-base.nix for the static provider/theme
-        # config; per-machine overrides go in ~/.config/opencode/local.jsonc.
-        "opencode/opencode.jsonc".text = builtins.toJSON (
-          (import ../opencode/opencode-base.nix) // {
-            mcp = config.programs.agenticConfig.mcp.opencodeConfig;
-          }
-        );
       };
       programs = {
         fzf = {

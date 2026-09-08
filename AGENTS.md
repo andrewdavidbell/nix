@@ -141,15 +141,37 @@ repo without first moving the account IDs and SSO start URL into an off-repo fil
 read at activation time. The AWS config format has no native `include` directive, so
 the "managed base + writable local overlay" pattern below does not apply directly.
 
-### Claude Code (`agentic-config`)
+### AI agents (`agentic-config`)
 
-Claude Code is configured by the external [`agentic-config`](https://github.com/andrewdavidbell/agentic-config)
-flake, imported in `homeConfigurations/adbell.nix` via
-`inputs.agentic-config.homeManagerModules.default`. That module owns everything
-under `~/.claude` (CLAUDE.md, skills, agents, hooks, MCP servers) plus the CLI
-itself — do **not** add `programs.claude-code` settings here; change them in the
-`agentic-config` repo and bump the flake input.
+Every AI agent is configured by the external [`agentic-config`](https://github.com/andrewdavidbell/agentic-config)
+flake, imported via `inputs.agentic-config.homeManagerModules.default`. Each
+home config then declares only *which* agents that machine runs:
 
+```nix
+programs.agenticConfig = {
+  skills.enable          = true;   # publish ~/.agents/skills/
+  agents.claude.enable   = true;
+  agents.opencode.enable = true;
+  agents.kiro.enable     = true;   # MacBookPro only
+};
+```
+
+**Division of responsibility.** `agentic-config` owns agent *configuration* —
+MCP server lists, skills, subagents, slash commands, and baseline config files
+(`~/.claude/*`, `~/.config/opencode/opencode.jsonc`, `~/.kiro/*`). This repo
+owns agent *packages*: `pkgs.opencode` stays in `home.packages`, and Kiro is a
+Homebrew cask in `darwinConfigurations/MacBookPro.nix`. Package pinning is a
+machine concern, and home-manager cannot install casks at all.
+
+Do **not** add `programs.claude-code` settings, opencode config, or Kiro config
+here — change them in `agentic-config` and bump the flake input.
+
+- **Guards.** Because packages live here and config lives upstream, the agent
+  modules assert the binary is present. Enabling `agents.opencode.enable`
+  without `pkgs.opencode` in `home.packages` fails the build with an explicit
+  message rather than silently laying down dead config. **Kiro has no such
+  guard** — it is a cask, invisible to home-manager at evaluation time, so
+  enabling it on a machine without the cask fails silently.
 - **`~/.claude/settings.json` is managed** (a read-only symlink into the store).
   In-app `/model` changes therefore don't persist across sessions — the model is
   pinned in `agentic-config`. Runtime state that *does* need to be writable is
@@ -172,6 +194,15 @@ itself — do **not** add `programs.claude-code` settings here; change them in t
 - **Skills** (bespoke and third-party) — per-harness locations and the
   clone-and-symlink pattern for third-party skills live in
   `docs/skills.md`.
+- **Kiro** (`agents.kiro.enable`, work machine only) reads the same
+  `{ mcpServers = { … }; }` shape as Claude Code, so its
+  `~/.kiro/settings/mcp.json` renders the shared list verbatim; bespoke skills
+  are linked into `~/.kiro/skills/`. That file is a read-only store symlink, so
+  Kiro's MCP panel cannot toggle servers — use a per-project
+  `.kiro/settings/mcp.json`, which wins under Kiro's precedence order (agent
+  config > workspace > global). Note Kiro is a GUI app: unlike terminal-run
+  Claude Code it does not inherit your interactive shell `$PATH`, so verify the
+  `uvx`/`npx`/`headroom` servers actually spawn before trusting the config.
 
 ### Hermes (Nous Research desktop agent)
 
@@ -197,7 +228,9 @@ what a nix module would need to solve.
 
 ### Tester Configuration
 
-`homeConfigurations/tester.nix` is identical to `adbell.nix`. Both configurations share the same git signing setup; git identity (name and email) is externalised to `~/.gitconfig.local` on each machine.
+`homeConfigurations/tester.nix` mirrors `adbell.nix`. Both share the same git signing setup; git identity (name and email) is externalised to `~/.gitconfig.local` on each machine, and both import `agentic-config` and enable the same agent set (`claude`, `opencode` — Kiro is work-machine only).
+
+Historically this was **not** true for agent config: `tester.nix` did not import `agentic-config` and rendered a static `opencode/opencode.jsonc` with no MCP servers, so the VM silently failed to exercise the MCP wiring it was supposed to be testing. Keep the agent enables in sync when changing either file — that gap is exactly what the VM exists to catch.
 
 This allows the test VM to verify the full production configuration.
 
@@ -327,7 +360,8 @@ opposed to how to debug it). See `docs/patterns.md`.
   local override slot (`~/.config/*` symlinks are read-only). Applied
   to opencode via `OPENCODE_CONFIG` pointing at
   `~/.config/opencode/local.jsonc`, activation-script-initialised to
-  `{}`. Also natively used by Claude Code (`settings.json` managed,
+  `{}` — both now owned by `agentic-config`'s opencode module, not this
+  repo. Also natively used by Claude Code (`settings.json` managed,
   `settings.local.json` writable) and git identity (`~/.gitconfig.local`
   via `programs.git.includes`). Use this shape before adding a new
   tool's config to `xdg.configFile`.

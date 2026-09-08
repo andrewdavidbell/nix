@@ -2,17 +2,17 @@
 let
   homeModule = { config, lib, pkgs, ... }: {
     imports = [
-      # Claude Code module transitively imports the agent-agnostic mcp
-      # and skills modules from the same flake — no need to re-import
-      # them here (the module system rejects duplicate option declarations
-      # when the same file is imported via two different attribute paths).
+      # Neutral entrypoint: pulls in the shared MCP + skills modules and every
+      # agent module. Nothing is wired until an agent is enabled below.
       inputs.agentic-config.homeManagerModules.default
     ];
     config = {
       programs.agenticConfig.skills.enable = true;
-      # Opencode is installed on this machine (pkgs.opencode below), so wire
-      # in the TDD sub-agents, /tdd slash command, and phase-guard plugin.
-      programs.agenticConfig.opencode.tdd.enable = true;
+      # Agent config (MCP servers, skills, subagents, baseline files) is owned
+      # by the agentic-config flake; this repo only declares which agents the
+      # machine runs. Agent *packages* stay in home.packages below.
+      programs.agenticConfig.agents.claude.enable = true;
+      programs.agenticConfig.agents.opencode.enable = true;
       home = {
         username = lib.mkForce username;
         homeDirectory = lib.mkForce homeDirectory;
@@ -43,20 +43,7 @@ let
         sessionVariables = {
           HOMEBREW_NO_ANALYTICS = 1;
           EDITOR = "nvim";
-          # Opencode merges this file over ~/.config/opencode/opencode.jsonc
-          # (the managed baseline). See `docs/patterns.md` — "Managed base +
-          # writable local overlay". The activation script below ensures it
-          # exists; it is intentionally not managed by home-manager so it
-          # stays writable and off-repo.
-          OPENCODE_CONFIG = "${homeDirectory}/.config/opencode/local.jsonc";
         };
-        activation.opencodeLocalOverlay = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-          overlay="${homeDirectory}/.config/opencode/local.jsonc"
-          if [ ! -e "$overlay" ]; then
-            mkdir -p "$(dirname "$overlay")"
-            echo '{}' > "$overlay"
-          fi
-        '';
       };
       xdg.configFile = {
         "nvim/init.lua".source = ../nvim/init.lua;
@@ -70,16 +57,6 @@ let
         "nvim-lazynvim/lua".source = ../nvim-lazynvim/lua;
         "nvim-nvchad/init.lua".source = ../nvim-nvchad/init.lua;
         "nvim-nvchad/lua".source = ../nvim-nvchad/lua;
-        # Opencode baseline is rendered from Nix so the MCP fragment
-        # (shared across every agent) is merged in. Static provider/theme
-        # config lives in ../opencode/opencode-base.nix; per-machine or
-        # personal overrides go in ~/.config/opencode/local.jsonc (see
-        # OPENCODE_CONFIG above).
-        "opencode/opencode.jsonc".text = builtins.toJSON (
-          (import ../opencode/opencode-base.nix) // {
-            mcp = config.programs.agenticConfig.mcp.opencodeConfig;
-          }
-        );
       };
       programs = {
         fzf = {
