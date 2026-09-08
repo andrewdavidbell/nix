@@ -32,12 +32,45 @@ by hand" pattern applies.
 
 ```bash
 uv tool install --python 3.13 "headroom-ai[all]"
-headroom doctor
+headroom --version
 ```
 
-`headroom doctor` should report all checks green. If it flags a missing
-Python 3.13, install via `uv python install 3.13` and re-run the install
-command.
+If `uv` flags a missing Python 3.13, install it via `uv python install 3.13`
+and re-run the install command.
+
+Restart the shell afterwards (`exec zsh`) so the `~/.local/bin` entry from
+`home.sessionPath` is live in the shell that spawns Claude Code.
+
+## `headroom doctor` is a *proxy* check — ignore it here
+
+`doctor` audits **proxy-mode** wiring only: whether a local proxy is
+listening on `:8787` and whether each client is routed through it via
+`ANTHROPIC_BASE_URL` / `headroom wrap`. This repo deliberately wires headroom
+**MCP-first** (see the header above), so none of that is set up and `doctor`
+will always look alarming. It reports failures/warnings and **exits 2** on a
+correctly-configured machine — don't wire it into a health script, and don't
+chase the output.
+
+Expected on every machine here, with the MCP path working fine:
+
+```
+Headroom Doctor v0.37.0 · port 8787
+
+│ proxy          │ ✗ fail │ not reachable at http://127.0.0.1:8787             │
+│ version        │ · skip │ proxy not reachable                                │
+│ claude         │ ⚠ warn │ not routed (no ANTHROPIC_BASE_URL in settings env) │
+│ wrap_marker    │ · skip │ no wrap marker found                               │
+│ codex          │ ⚠ warn │ not routed (no ~/.codex/config.toml)               │
+│ shell env      │ ⚠ warn │ ANTHROPIC_BASE_URL / OPENAI_BASE_URL unset — …      │
+│ savings        │ ⚠ warn │ no savings recorded yet                            │
+│ budget         │ · skip │ proxy not reachable                                │
+│ claude desktop │ ⚠ warn │ agent sessions bypass the proxy …                  │
+
+1 failure(s), 5 warning(s)
+```
+
+`claude mcp list` is the green signal for this setup, not `doctor`. `doctor`
+only becomes meaningful if the proxy-mode follow-on below is ever adopted.
 
 ## Verify the MCP wiring
 
@@ -49,11 +82,24 @@ current `agentic-config` revision:
 claude mcp list          # `headroom` should appear
 ```
 
-End-to-end: in Claude Code, ask the agent to compress a large tool output
-using the `headroom` MCP tool. It should return compressed text with a
-token-savings figure. If it says the server is unavailable, the CLI likely
-isn't on `$PATH` in the shell that spawned Claude — restart the shell so
-the `home.sessionPath` update takes effect and try again.
+Three tools are exposed, all agent-driven — you prompt for them rather than
+calling them yourself:
+
+| tool | use |
+| --- | --- |
+| `headroom_compress` | shrink a large blob (log dump, plan output, wide search result) before the agent reasons over it; returns compressed text plus a `hash=…` |
+| `headroom_retrieve` | pull the original back by that hash when the compression dropped something needed |
+| `headroom_stats` | session totals: compressions, tokens saved, estimated cost saved |
+
+Compress at *capture* time ("run that build and headroom the output"), not
+after the fact — once the tokens are in context the saving is gone.
+
+Smoke test: `headroom_stats` is the cheapest call and needs no arguments; a
+JSON response means the server is up. Its `proxy: unreachable` warning is
+expected for the same reason `doctor` fails — see above. If the server is
+reported unavailable, the CLI likely isn't on `$PATH` in the shell that
+spawned Claude — restart the shell so the `home.sessionPath` update takes
+effect and try again.
 
 ## Not applied to the tester VM
 
