@@ -223,6 +223,8 @@ but runs a **lean work profile**:
   and `src` aliases, the `nvm` init, and the neovim `vm()` switcher are kept.
 - **Homebrew** mirrors the M3's handling: the `jundot/omlx` tap plus `nvm`/`omlx` brews (neither
   is in nixpkgs) and `cleanup = "none"` for the same omlx dependency-closure reason.
+- **Work-only cask:** `kiro` (AWS Kiro, the agentic IDE). It is backed by a work AWS
+  account / Kiro subscription, so it stays off the personal M3 and the test VM.
 
 ### Standard Configurations
 

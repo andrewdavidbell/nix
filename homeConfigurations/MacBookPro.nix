@@ -18,6 +18,7 @@ let
           pkgs.awscli2
           pkgs.google-cloud-sdk
           pkgs.jq
+          pkgs.llmfit
           pkgs.opencode
           pkgs.ruff
           # Required by nvim-treesitter's `main` branch, which compiles parsers

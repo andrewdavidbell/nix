@@ -42,6 +42,8 @@ let
           "brave-browser"
           "ghostty"
           "google-chrome"
+          # AWS Kiro — work machine only (AWS-account-backed agentic IDE).
+          "kiro"
           "logi-options+"
           "microsoft-teams"
           "obsidian"

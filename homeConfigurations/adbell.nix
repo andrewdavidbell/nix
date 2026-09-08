@@ -26,6 +26,7 @@ let
           pkgs.google-cloud-sdk
           pkgs.jq
           pkgs.k3d
+          pkgs.llmfit
           pkgs.mas
           pkgs.opencode
           pkgs.pwgen
