@@ -272,6 +272,58 @@ formula you declared once, removed from the config, and `cleanup =
 
 ---
 
+## An agent silently ignores skills that are present on disk
+
+**Symptom:** A skill directory exists at the harness's documented path,
+`SKILL.md` opens fine from a shell, the frontmatter is valid — and the agent
+behaves as though the skill isn't there. No error, no warning. First seen with
+Kiro on `MacBookPro` (9 Sep 2026): `~/.kiro/skills/{tdd,design-patterns}` were
+present and readable, but Kiro never offered them.
+
+**Recognition pattern:** `ls -l` the skills directory. If the entry is `lrwxr-xr-x`
+(a symlink) rather than `drwxr-xr-x` (a real directory), suspect this
+immediately:
+
+```bash
+ls -l ~/.kiro/skills/          # or ~/.claude/skills/, ~/.config/opencode/...
+```
+
+Compare against a harness that *does* work. On this setup:
+
+| Path | Type | Result |
+| --- | --- | --- |
+| `~/.claude/skills/tdd` | real directory, files symlinked individually | works |
+| `~/.agents/skills/tdd` | bare symlink to a store directory | fine — OpenCode handles it |
+| `~/.kiro/skills/tdd` | bare symlink | **invisible to Kiro** |
+
+**Mechanism:** Most agent harnesses are Electron/Node apps that enumerate skills
+with `fs.readdir(path, { withFileTypes: true })` and filter on
+`dirent.isDirectory()`. For a symlink that returns **false** — `isSymbolicLink()`
+is true instead. The scanner skips the entry without ever following it, so the
+directory is unreachable even though every path under it resolves correctly from
+a shell. Harnesses that `stat()` (which follows symlinks) instead of using
+`Dirent` are unaffected, which is why the same layout can work in one tool and
+silently fail in another.
+
+**Fix:** make home-manager materialise a real directory tree, with each file
+symlinked individually, using `recursive = true`:
+
+```nix
+home.file.".kiro/skills/tdd" = {
+  source = ../../skills/tdd;
+  recursive = true;      # load-bearing, not style
+};
+```
+
+`programs.claude-code.skills.*` already does this internally — that is precisely
+why `~/.claude/skills/<name>` is a real directory while `~/.agents/skills/<name>`
+is a link.
+
+**Prevention:** when wiring a *new* agent, default to `recursive = true` for any
+directory the agent has to scan. Reserve bare directory symlinks for paths the
+agent opens by exact name. Verify on disk after activation rather than trusting
+the build — `nix build` cannot detect this, since both forms evaluate happily.
+
 ## Adding new entries
 
 When you hit a failure mode that took non-obvious diagnosis and you

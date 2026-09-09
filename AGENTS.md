@@ -200,9 +200,13 @@ here — change them in `agentic-config` and bump the flake input.
   are linked into `~/.kiro/skills/`. That file is a read-only store symlink, so
   Kiro's MCP panel cannot toggle servers — use a per-project
   `.kiro/settings/mcp.json`, which wins under Kiro's precedence order (agent
-  config > workspace > global). Note Kiro is a GUI app: unlike terminal-run
-  Claude Code it does not inherit your interactive shell `$PATH`, so verify the
-  `uvx`/`npx`/`headroom` servers actually spawn before trusting the config.
+  config > workspace > global). Reading the managed file works fine, and all
+  four servers connect from a GUI-launched Kiro — despite it not inheriting an
+  interactive shell, it resolves `uvx`/`npx`/`headroom` (verified 9 Sep 2026),
+  so no absolute store paths are needed. A restart is required after the file
+  first appears; reload-at-idle only covers edits to a file Kiro already tracks.
+- **Skills must be linked recursively.** `home.file` with `recursive = true`,
+  never a bare directory symlink — see `docs/troubleshooting.md`.
 
 ### Hermes (Nous Research desktop agent)
 
@@ -416,6 +420,27 @@ Homebrew's own diagnostic commands (`brew uses`, `brew leaves`) currently 404 on
 3. Retry `sudo --set-home darwin-rebuild switch --flake .#<host>` and verify a home-manager symlink flipped.
 
 **Prevention:** on `cleanup = "none"` machines, when removing a brew from `brews = [...]`, `brew uninstall <name>` on that machine in the same commit — otherwise the formula and its dep closure survive indefinitely. The test VM's `cleanup = "uninstall"` masks this class of failure, so don't treat a green VM activation as a signal.
+
+### An agent silently ignores skills that are present on disk
+
+**Symptom:** skill directory exists at the documented path, `SKILL.md` reads
+fine from a shell, frontmatter is valid — agent acts as though it isn't there.
+No error. Seen with Kiro on `MacBookPro`, 9 Sep 2026.
+
+**Diagnosis:** `ls -l` the skills dir. `lrwxr-xr-x` (symlink) instead of
+`drwxr-xr-x` (real dir) is the tell. Electron/Node harnesses enumerate with
+`readdir(…, { withFileTypes: true })` and filter on `dirent.isDirectory()`,
+which returns **false** for a symlink — the entry is skipped without being
+followed.
+
+**Fix:** `home.file."<path>" = { source = …; recursive = true; };` so
+home-manager creates a real directory tree with files symlinked individually.
+`programs.claude-code.skills.*` does this already.
+
+**Prevention:** default to `recursive = true` for any directory an agent has to
+*scan*; bare symlinks are only safe for paths opened by exact name. `nix build`
+cannot catch this — both forms evaluate fine, so verify on disk after
+activation. Full walkthrough in `docs/troubleshooting.md`.
 
 ## Important Constraints
 
