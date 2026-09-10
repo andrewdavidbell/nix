@@ -53,19 +53,20 @@ loads and **merges** in order (lowest → highest):
 
 The pattern maps to positions 2 (baseline) and 3 (overlay):
 
-- **Baseline:** `~/.config/opencode/opencode.jsonc` — home-manager
-  symlink to `opencode/opencode.jsonc` in this repo, wired up in
-  every home config via `xdg.configFile."opencode/opencode.jsonc"`.
+- **Baseline:** `~/.config/opencode/opencode.jsonc` — a store symlink
+  written by `agentic-config`'s `modules/agents/opencode.nix` via
+  `home.file.".config/opencode/opencode.jsonc".text`. Owned by that
+  flake, **not** by this repo; change it there and bump the input.
 - **Overlay:** `~/.config/opencode/local.jsonc` — writable file
-  outside `/nix/store/`. Pointed at by `OPENCODE_CONFIG`, set in each
-  home config's `sessionVariables`. Touched to `{}` on activation if
-  missing so opencode always finds valid JSON.
+  outside `/nix/store/`. Pointed at by `OPENCODE_CONFIG`, set by the
+  same module's `home.sessionVariables`. Seeded to `{}` by its
+  `home.activation.opencodeLocalOverlay` script if missing, so
+  opencode always finds valid JSON.
 
 Result: to add e.g. a work-machine-only provider, edit
 `~/.config/opencode/local.jsonc` directly. No repo edit, no rebuild.
 If a setting settles and belongs everywhere, promote it into
-`opencode/opencode.jsonc` in the repo (or a machine-specific
-`opencode/opencode-<host>.jsonc` if only some hosts should get it).
+`agents.opencode.settings` in `agentic-config`.
 
 ### Applying to other tools
 
@@ -106,6 +107,83 @@ or a custom-path override. Checklist:
   (`programs.git` in the home configs) and machine-local identity
   lives in `~/.gitconfig.local` via `programs.git.includes`. See the
   "Important Constraints" section in `CLAUDE.md`.
+
+---
+
+## Per-project override (agent harnesses)
+
+Applies to: **Kiro**, **opencode**, **Claude Code**.
+
+### When to use
+
+The overlay pattern above needs a *global* writable slot. Some tools
+don't have one — Kiro's only MCP config paths are the global
+`~/.kiro/settings/mcp.json` (which we manage, so it's read-only) and a
+workspace file. When there's no global overlay, the project-scoped
+config is the escape hatch: it outranks the managed global everywhere
+it exists, costs no rebuild, and is scoped to the repo you're in.
+
+Reach for this when you want a server or skill off *here* but on
+elsewhere. For "off on this machine, always", stay declarative and
+change `agentic-config` instead.
+
+### Shape
+
+Managed global baseline (store symlink) + a small project-local file
+committed to whichever repo needs the deviation. The harness merges
+them, project-first.
+
+### Example: disabling one MCP server per harness
+
+| Harness | Project file | Merge granularity | Disable one server | Runtime toggle |
+| --- | --- | --- | --- | --- |
+| Kiro | `.kiro/settings/mcp.json` | whole server entry replaced | `"disabled": true` — restate `command`/`args` | **no** |
+| opencode | `opencode.json(c)` in project root | deep, per-key | `{"mcp":{"<name>":{"enabled":false}}}` | no |
+| Claude Code | `.mcp.json` + `.claude/settings.json` | whole server entry replaced | `disabledMcpServers` in `.claude/settings.json` | **yes** — `/mcp` |
+
+Three gotchas behind that table:
+
+- **Only opencode deep-merges.** It combines configs per-key, so a
+  project file naming just `enabled` inherits `command`/`args` from the
+  baseline. Kiro and Claude Code take the winning source's server entry
+  wholesale, with no field merging — restate the full entry there.
+- **Claude Code's `.mcp.json` can only override, not disable.**
+  Switching a server off goes through settings lists, and which list
+  depends on provenance: `disabledMcpjsonServers` gates only `.mcp.json`
+  entries, while `disabledMcpServers` covers user-scope, plugin and
+  connector servers. The servers `agentic-config` provides arrive as
+  **plugin** servers (they surface as
+  `mcp__plugin_claude-code-home-manager_<name>__<tool>`), so
+  `disabledMcpServers` is the one that applies.
+- **opencode's project config outranks `OPENCODE_CONFIG`.** Precedence
+  is global < `local.jsonc` < project, so a project file beats the
+  machine-local overlay, not the other way round.
+
+### Why Claude Code has a working UI toggle and Kiro doesn't
+
+Not luck, and it's the generalisable rule here. Claude Code separates
+*declared config* (`~/.claude/settings.json`, which `agentic-config`
+manages as a store symlink) from *runtime state* (`~/.claude.json`,
+deliberately left writable) — and `/mcp` writes to the latter. Kiro
+collapses both roles into `~/.kiro/settings/mcp.json`, so managing that
+file declaratively necessarily costs the toggle.
+
+**The overlay pattern works wherever a tool separates declared config
+from runtime state, and fails wherever one file does both.** Check
+which of the two you're dealing with before promising yourself a UI
+toggle will still work post-activation.
+
+### Applying to other tools
+
+1. Find the tool's config precedence order and confirm project scope
+   outranks the global path we manage.
+2. Check merge granularity — per-key or whole-entry. If whole-entry,
+   the project file must restate every field, and it will silently
+   drift from the baseline when upstream changes.
+3. Check whether "disable" is expressible in the same file at all, or
+   whether it lives in a separate settings key (the Claude Code case).
+4. Commit the project file. Unlike the writable overlay, this one is
+   meant to be in version control and shared.
 
 ---
 

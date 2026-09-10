@@ -131,6 +131,9 @@ separately; no sync with the file-based locations above.
 
 ### Related
 
+- `docs/agent-harness-onboarding.md` — task-shaped version of this
+  file: adding and *disabling* skills per harness, alongside the same
+  for MCP servers.
 - `docs/hermes-setup.md` §4 — Hermes's own skills flow.
 - `docs/patterns.md` — the managed-base/writable-overlay pattern
   used elsewhere for tools that don't allow read-only config.

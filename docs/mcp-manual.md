@@ -179,3 +179,6 @@ When adding a new MCP server, the decision:
 1. Direct-process (`command` + `args`), no secrets, useful everywhere →
    add to `agentic-config/data/mcp-servers.nix`.
 2. Anything else → add here, one section per server.
+
+For *removing* or disabling a server — per machine or per project — see
+`docs/agent-harness-onboarding.md`.

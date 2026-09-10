@@ -367,6 +367,23 @@ opposed to how to debug it). See `docs/patterns.md`.
   `settings.local.json` writable) and git identity (`~/.gitconfig.local`
   via `programs.git.includes`). Use this shape before adding a new
   tool's config to `xdg.configFile`.
+- **Per-project override (agent harnesses)** — the fallback when a tool
+  has no *global* writable slot, as Kiro does not. The project-scoped
+  config outranks the managed global, costs no rebuild, and is scoped to
+  one repo. Covers Kiro (`.kiro/settings/mcp.json`), opencode
+  (`opencode.json`) and Claude Code (`.mcp.json` +
+  `disabledMcpServers`), with a comparison table of merge granularity
+  and disable syntax. General rule: the overlay pattern works wherever a
+  tool separates declared config from runtime state, and fails wherever
+  one file does both — which is why Claude Code's `/mcp` toggle survives
+  being nix-managed and Kiro's does not.
+
+## Agent onboarding
+
+`docs/agent-harness-onboarding.md` — the task-shaped guide to adding or
+disabling MCP servers and skills per harness, plus the checklist for
+wiring up a new harness. Start there before `docs/skills.md` or
+`docs/mcp-manual.md`, which are the reference material it points into.
 
 ## Troubleshooting
 
