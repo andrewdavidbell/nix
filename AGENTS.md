@@ -205,8 +205,6 @@ here — change them in `agentic-config` and bump the flake input.
   interactive shell, it resolves `uvx`/`npx`/`headroom` (verified 9 Sep 2026),
   so no absolute store paths are needed. A restart is required after the file
   first appears; reload-at-idle only covers edits to a file Kiro already tracks.
-- **Skills must be linked recursively.** `home.file` with `recursive = true`,
-  never a bare directory symlink — see `docs/troubleshooting.md`.
 
 ### Hermes (Nous Research desktop agent)
 
@@ -421,26 +419,23 @@ Homebrew's own diagnostic commands (`brew uses`, `brew leaves`) currently 404 on
 
 **Prevention:** on `cleanup = "none"` machines, when removing a brew from `brews = [...]`, `brew uninstall <name>` on that machine in the same commit — otherwise the formula and its dep closure survive indefinitely. The test VM's `cleanup = "uninstall"` masks this class of failure, so don't treat a green VM activation as a signal.
 
-### An agent silently ignores skills that are present on disk
+### A newly-wired agent appears to ignore its MCP servers and skills
 
-**Symptom:** skill directory exists at the documented path, `SKILL.md` reads
-fine from a shell, frontmatter is valid — agent acts as though it isn't there.
-No error. Seen with Kiro on `MacBookPro`, 9 Sep 2026.
+**Symptom:** agent wired, switch succeeded, files present and readable — agent
+acts as though none of it exists. Hit with Kiro on `MacBookPro`, 9 Sep 2026;
+both MCP and skills looked broken and neither was.
 
-**Diagnosis:** `ls -l` the skills dir. `lrwxr-xr-x` (symlink) instead of
-`drwxr-xr-x` (real dir) is the tell. Electron/Node harnesses enumerate with
-`readdir(…, { withFileTypes: true })` and filter on `dirent.isDirectory()`,
-which returns **false** for a symlink — the entry is skipped without being
-followed.
+**Diagnose cheapest-first:** (1) fully restart the agent — config appearing
+under a running instance differs from an edit it tracks; (2) check you're
+looking in the right UI — Kiro lists skills under **Agent Steering & Skills**,
+not an obvious place; (3) confirm activation ran at all
+(`readlink ~/.claude/settings.json` — a `brew bundle` failure aborts activation
+before home-manager links anything); (4) only then suspect the config.
 
-**Fix:** `home.file."<path>" = { source = …; recursive = true; };` so
-home-manager creates a real directory tree with files symlinked individually.
-`programs.claude-code.skills.*` does this already.
-
-**Prevention:** default to `recursive = true` for any directory an agent has to
-*scan*; bare symlinks are only safe for paths opened by exact name. `nix build`
-cannot catch this — both forms evaluate fine, so verify on disk after
-activation. Full walkthrough in `docs/troubleshooting.md`.
+**Do not assume symlink traversal.** Kiro reads skills through bare
+`/nix/store` symlinks fine. That mechanism was diagnosed here and did **not**
+apply; `recursive = true` is not needed anywhere. Full entry in
+`docs/troubleshooting.md`.
 
 ## Important Constraints
 

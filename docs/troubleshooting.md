@@ -272,57 +272,41 @@ formula you declared once, removed from the config, and `cleanup =
 
 ---
 
-## An agent silently ignores skills that are present on disk
+## A newly-wired agent appears to ignore its MCP servers and skills
 
-**Symptom:** A skill directory exists at the harness's documented path,
-`SKILL.md` opens fine from a shell, the frontmatter is valid — and the agent
-behaves as though the skill isn't there. No error, no warning. First seen with
-Kiro on `MacBookPro` (9 Sep 2026): `~/.kiro/skills/{tdd,design-patterns}` were
-present and readable, but Kiro never offered them.
+**Symptom:** a new agent is wired up, `darwin-rebuild switch` succeeds, the
+config files are present and readable on disk — and the agent behaves as though
+none of it exists. First hit with Kiro on `MacBookPro` (9 Sep 2026), where both
+the MCP servers and the skills looked broken and neither actually was.
 
-**Recognition pattern:** `ls -l` the skills directory. If the entry is `lrwxr-xr-x`
-(a symlink) rather than `drwxr-xr-x` (a real directory), suspect this
-immediately:
+**Diagnose in this order — cheapest and most likely first:**
 
-```bash
-ls -l ~/.kiro/skills/          # or ~/.claude/skills/, ~/.config/opencode/...
-```
+1. **Restart the agent completely.** Config appearing *underneath* a running
+   instance is not the same as an edit to a file it already tracks. Kiro
+   documents reload-at-idle for the latter only. Quit fully, don't just reload
+   the window.
+2. **Check you are looking in the right place.** Agents surface skills in
+   product-specific UI that is not always obvious. In Kiro it is the **Agent
+   Steering & Skills** panel; MCP servers are under the MCP panel, reachable via
+   `Cmd+Shift+P` → "Kiro: Open user MCP config (JSON)". "I can't see them"
+   usually means "I haven't found the panel yet".
+3. **Confirm activation actually ran.** A `brew bundle` failure aborts
+   activation *before* home-manager links anything, so the build succeeds and
+   nothing flips. `readlink ~/.claude/settings.json` — if it isn't a store path,
+   home-manager never ran. See the two Homebrew entries above.
+4. **Only then** suspect the config itself.
 
-Compare against a harness that *does* work. On this setup:
+**Do not assume a symlink-traversal problem.** Kiro reads bespoke skills through
+bare `/nix/store` symlinks without trouble, exactly as Claude Code reads the
+third-party symlinks in `~/.claude/skills/`. A plausible mechanism — Node's
+`readdir({ withFileTypes: true })` reporting `isDirectory() === false` for
+symlinks — was diagnosed here and turned out **not** to apply. Bare symlinks are
+the norm across `~/.agents/skills/`, `~/.claude/skills/` and `~/.kiro/skills/`;
+`recursive = true` is not needed.
 
-| Path | Type | Result |
-| --- | --- | --- |
-| `~/.claude/skills/tdd` | real directory, files symlinked individually | works |
-| `~/.agents/skills/tdd` | bare symlink to a store directory | fine — OpenCode handles it |
-| `~/.kiro/skills/tdd` | bare symlink | **invisible to Kiro** |
-
-**Mechanism:** Most agent harnesses are Electron/Node apps that enumerate skills
-with `fs.readdir(path, { withFileTypes: true })` and filter on
-`dirent.isDirectory()`. For a symlink that returns **false** — `isSymbolicLink()`
-is true instead. The scanner skips the entry without ever following it, so the
-directory is unreachable even though every path under it resolves correctly from
-a shell. Harnesses that `stat()` (which follows symlinks) instead of using
-`Dirent` are unaffected, which is why the same layout can work in one tool and
-silently fail in another.
-
-**Fix:** make home-manager materialise a real directory tree, with each file
-symlinked individually, using `recursive = true`:
-
-```nix
-home.file.".kiro/skills/tdd" = {
-  source = ../../skills/tdd;
-  recursive = true;      # load-bearing, not style
-};
-```
-
-`programs.claude-code.skills.*` already does this internally — that is precisely
-why `~/.claude/skills/<name>` is a real directory while `~/.agents/skills/<name>`
-is a link.
-
-**Prevention:** when wiring a *new* agent, default to `recursive = true` for any
-directory the agent has to scan. Reserve bare directory symlinks for paths the
-agent opens by exact name. Verify on disk after activation rather than trusting
-the build — `nix build` cannot detect this, since both forms evaluate happily.
+**Prevention:** when adding an agent, confirm where it *displays* skills and MCP
+servers before concluding anything is broken, and restart it once after the
+first activation. `nix build` proves evaluation, never activation or discovery.
 
 ## Adding new entries
 
