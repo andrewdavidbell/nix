@@ -134,6 +134,31 @@ let
         };
         go = {
           enable = true;
+          # Go's default GOPATH is ~/go, which parks a module cache and a bin
+          # dir at the top level of $HOME. Redirect onto XDG paths to match the
+          # rest of the CLI tooling (nvim, gh, uv already use ~/.cache and
+          # ~/.local/share). home-manager renders this to
+          # ~/Library/Application Support/go/env on darwin — which is exactly
+          # where Go reads GOENV from, so it applies to every invocation
+          # regardless of shell.
+          #
+          # GOBIN must be listed explicitly: it defaults to $GOPATH/bin, which
+          # is not on PATH. ~/.local/bin is (see home.sessionPath above), so
+          # `go install` output is actually runnable.
+          #
+          # GOCACHE likewise: Go resolves it via os.UserCacheDir(), which on
+          # darwin returns ~/Library/Caches and ignores XDG_CACHE_HOME, so
+          # leaving it unset would strand the build cache outside ~/.cache.
+          #
+          # GOROOT is deliberately absent — the toolchain derives it from the
+          # store path of its own binary. Setting it by hand goes stale on
+          # every nixpkgs bump.
+          env = {
+            GOPATH = "${homeDirectory}/.local/share/go";
+            GOBIN = "${homeDirectory}/.local/bin";
+            GOMODCACHE = "${homeDirectory}/.cache/go/mod";
+            GOCACHE = "${homeDirectory}/.cache/go/build";
+          };
         };
         neovim = {
           defaultEditor = true;

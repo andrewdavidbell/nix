@@ -118,9 +118,48 @@ Settings Sync to pull down extensions and settings.
 
 The following shell configuration is captured in `homeConfigurations/adbell.nix`:
 
-- **`home.sessionPath`:** `~/.local/bin` (uv)
+- **`home.sessionPath`:** `~/.local/bin` (uv, and Go's `GOBIN` — see below)
 - **`shellAliases`:** `ic` (iCloud Drive), `ob` (Obsidian vault)
 - **`initExtra`:** NVM initialisation, `vm()` neovim config selector, 1Password plugins source
+
+### Go toolchain
+
+`programs.go.enable` is set in all three home configs, each with the same
+`programs.go.env` block redirecting Go's paths onto XDG locations:
+
+```nix
+GOPATH     = "${homeDirectory}/.local/share/go";
+GOBIN      = "${homeDirectory}/.local/bin";
+GOMODCACHE = "${homeDirectory}/.cache/go/mod";
+GOCACHE    = "${homeDirectory}/.cache/go/build";
+```
+
+Go's own default is `GOPATH=~/go`, which puts a module cache and a bin directory
+at the top level of `$HOME`. Since modules (Go 1.11) that tree holds nothing but
+cache and binaries, so it belongs alongside the rest of the CLI tooling in
+`~/.cache` and `~/.local/share`.
+
+Three things are easy to get wrong here:
+
+- **Use `programs.go.env`, not `home.sessionVariables`.** The module writes
+  `~/Library/Application Support/go/env` on darwin (it branches on
+  `isDarwin`; the `xdg.configFile."go/env"` path is Linux-only), which is where
+  Go reads `GOENV` from. That applies to every invocation, not just ones
+  inheriting an interactive shell.
+- **`GOCACHE` must be named explicitly.** Go resolves it via
+  `os.UserCacheDir()`, which on darwin returns `~/Library/Caches` and **ignores
+  `XDG_CACHE_HOME`**. Setting XDG variables alone will not move it.
+- **Never set `GOROOT`.** The toolchain derives it from the store path of its own
+  binary. `MacBookPro.nix` previously set it to `${pkgs.go}/libexec`, a path
+  nixpkgs does not create — the real root is `${pkgs.go}/share/go` — so the
+  variable pointed at nothing and would have gone stale on every version bump
+  regardless.
+
+Consequence worth knowing: `~/Library/Application Support/go/env` becomes a
+read-only store symlink, so `go env -w` will fail. Override per-shell with a real
+environment variable (which outranks the file), or change the config here. This
+is the usual managed-file trade-off — see **Patterns** below — but Go has no
+writable overlay slot, so there is no local-override file to reach for.
 
 ### AWS CLI
 

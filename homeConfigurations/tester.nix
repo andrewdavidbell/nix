@@ -133,6 +133,17 @@ let
         };
         go = {
           enable = true;
+          # Mirrors adbell.nix — see the rationale there. Go's default GOPATH
+          # is ~/go; this redirects it onto XDG paths, puts `go install` output
+          # on PATH via GOBIN, and pins GOCACHE (which Go would otherwise
+          # resolve to ~/Library/Caches on darwin). GOROOT stays unset so the
+          # toolchain derives it from its own store path.
+          env = {
+            GOPATH = "${homeDirectory}/.local/share/go";
+            GOBIN = "${homeDirectory}/.local/bin";
+            GOMODCACHE = "${homeDirectory}/.cache/go/mod";
+            GOCACHE = "${homeDirectory}/.cache/go/build";
+          };
         };
         neovim = {
           defaultEditor = true;

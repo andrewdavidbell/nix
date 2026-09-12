@@ -43,8 +43,6 @@ let
         sessionVariables = {
           HOMEBREW_NO_ANALYTICS = 1;
           EDITOR = "nvim";
-          GOROOT = "${pkgs.go}/libexec";
-          GOPATH = "${toString config.home.homeDirectory}/Source/go";
         };
       };
       xdg.configFile = {
@@ -122,6 +120,18 @@ let
         };
         go = {
           enable = true;
+          # Matches adbell.nix — see the rationale there. Replaces the former
+          # GOROOT/GOPATH entries in home.sessionVariables: GOROOT pointed at
+          # ${pkgs.go}/libexec, which nixpkgs does not create (the real root is
+          # ${pkgs.go}/share/go), and GOPATH pointed at ~/Source/go, a third
+          # location that matched neither machine. Set via programs.go.env so
+          # it lands in Go's own env file rather than the shell environment.
+          env = {
+            GOPATH = "${homeDirectory}/.local/share/go";
+            GOBIN = "${homeDirectory}/.local/bin";
+            GOMODCACHE = "${homeDirectory}/.cache/go/mod";
+            GOCACHE = "${homeDirectory}/.cache/go/build";
+          };
         };
         neovim = {
           defaultEditor = true;
