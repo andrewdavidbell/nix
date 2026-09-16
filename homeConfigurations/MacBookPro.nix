@@ -23,11 +23,13 @@ let
         homeDirectory = lib.mkForce homeDirectory;
         packages = [
           pkgs.awscli2
+          pkgs.gh
           pkgs.google-cloud-sdk
           pkgs.jq
           pkgs.llmfit
           pkgs.opencode
           pkgs.ruff
+          pkgs.shellcheck
           # Required by nvim-treesitter's `main` branch, which compiles parsers
           # at install time via the tree-sitter CLI (unlike `master`, which
           # shipped precompiled .so files).
