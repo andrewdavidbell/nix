@@ -143,8 +143,12 @@ let
         };
         oh-my-posh = {
           enable = true;
-          enableZshIntegration = true;
-          useTheme = "powerlevel10k_rainbow";
+          # The zsh integration is hand-rolled in programs.zsh.initContent below
+          # so it can be gated on $TERM_PROGRAM. Kiro's terminal shell
+          # integration breaks when a precmd prompt engine re-renders PROMPT, so
+          # the theme name travels with that eval rather than living in useTheme
+          # here. See docs/troubleshooting.md.
+          enableZshIntegration = false;
         };
         ripgrep = {
           enable = true;
@@ -166,6 +170,16 @@ let
               [[ -d "$ZSH_CACHE_DIR/completions" ]] || mkdir -p "$ZSH_CACHE_DIR/completions"
             '')
             ''
+              # Kiro (TERM_PROGRAM=kiro) drives its integrated terminal through
+              # shell integration; a prompt engine that rewrites PROMPT on every
+              # precmd wipes the command-boundary markers, so the agent reads the
+              # prompt as command output and gets exit code -1. Everywhere else,
+              # keep the rainbow prompt. See docs/troubleshooting.md.
+              if [[ "$TERM_PROGRAM" != "kiro" ]]; then
+                eval "$(${pkgs.oh-my-posh}/bin/oh-my-posh init zsh \
+                  --config ${pkgs.oh-my-posh}/share/oh-my-posh/themes/powerlevel10k_rainbow.omp.json)"
+              fi
+
               export NVM_DIR="$HOME/.nvm"
               [[ -e "''${HOMEBREW_PREFIX}/opt/nvm/nvm.sh" ]] && source "''${HOMEBREW_PREFIX}/opt/nvm/nvm.sh"
 

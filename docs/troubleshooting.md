@@ -308,6 +308,107 @@ the norm across `~/.agents/skills/`, `~/.claude/skills/` and `~/.kiro/skills/`;
 servers before concluding anything is broken, and restart it once after the
 first activation. `nix build` proves evaluation, never activation or discovery.
 
+## Kiro's agent reports exit code -1 and captures the prompt as command output
+
+Applies to `MacBookPro` only — Kiro is a work-machine cask.
+
+### Symptom
+
+Kiro's agent runs a command in its integrated terminal and comes back with one
+or more of:
+
+- the captured "output" contains the oh-my-posh prompt box and the echoed input
+  line, not just the command's own output
+- **`exit code -1`** instead of the real status, so the agent cannot tell
+  success from failure
+- the agent hangs in **`Working...`** and never sees the command finish
+
+Everything else about the shell is fine — `$PATH` is right, aliases work,
+commands you type by hand behave normally. It is only the *agent's* view that is
+broken.
+
+### What's actually happening
+
+Kiro drives its terminal through VS Code-style shell integration: the shell
+emits escape-sequence markers around each command so the editor knows where
+output starts, where it ends, and what the exit status was.
+
+oh-my-posh installs a `precmd` hook that re-renders `PROMPT` on **every** prompt
+draw. That happens after the integration has set its markers, so the markers get
+clobbered. With no command boundaries the editor falls back to screen-scraping
+(hence the prompt in the output) and has nowhere to read the status from (hence
+`-1`). Powerlevel10k/9k has the same problem for the same reason, and
+[Kiro's own troubleshooting docs](https://kiro.dev/docs/ide/troubleshooting/)
+name both by name.
+
+Kiro sets **`TERM_PROGRAM=kiro`** in terminals it launches, which is the hook
+the upstream fix hangs off.
+
+### Fix
+
+Gate the prompt engine on `$TERM_PROGRAM` in the nix-managed `~/.zshrc`. In
+`homeConfigurations/MacBookPro.nix`:
+
+1. Set `programs.oh-my-posh.enableZshIntegration = false` (keep
+   `enable = true` — the package and its themes are still wanted) and drop
+   `useTheme`. That stops home-manager emitting an *unconditional*
+   `eval "$(oh-my-posh init zsh …)"`.
+2. Emit the eval yourself, guarded, in `programs.zsh.initContent`:
+
+   ```nix
+   ''
+     if [[ "$TERM_PROGRAM" != "kiro" ]]; then
+       eval "$(${pkgs.oh-my-posh}/bin/oh-my-posh init zsh \
+         --config ${pkgs.oh-my-posh}/share/oh-my-posh/themes/powerlevel10k_rainbow.omp.json)"
+     fi
+   ''
+   ```
+
+3. `sudo --set-home darwin-rebuild switch --flake .#MacBookPro`, then **quit
+   Kiro fully and relaunch** — a window reload is not enough (see the entry
+   above).
+
+Verify with `echo "$TERM_PROGRAM"` (`kiro`) and
+`ls /nonexistent; echo $?` (`1`, and Kiro must report `1`, not `-1`) in Kiro's
+terminal; then confirm the rainbow prompt still renders in Terminal.app.
+
+Only the prompt is suppressed. Antidote plugins, aliases, `$PATH`, `nvm` and
+`vm()` all still load inside Kiro. If Kiro is still flaky after this, the next
+thing to try is the zle widgets (`zsh-autosuggestions`,
+`fast-syntax-highlighting`, `zsh-history-substring-search`), which redraw the
+input line — but upstream does not blame them, and that needs a second antidote
+bundle rather than a one-line guard.
+
+### Prevention
+
+**When an agent proposes fixing something by hand-editing a home-manager-managed
+dotfile on these machines, that is the signal to go find the declarative
+equivalent — not to accept the edit.** Kiro's own agent "fixed" this (Sept 2026)
+by replacing the `~/.zshenv` store symlink with a real file setting
+`ZDOTDIR="$HOME/.kiro/zdotdir"`, deleting the `~/.zshrc` symlink, hand-rolling a
+`~/.kiro/zdotdir/.zshrc`, and adding a `zsh-clean` terminal profile to Kiro's
+User settings. It worked, and it was wrong three times over:
+
+- **Imperative** — it edits files this repo declares, so the next
+  `darwin-rebuild switch` fights it (`backupFileExtension = "backup"` will move
+  the stray `~/.zshenv` aside, and aborts outright if a `.backup` already
+  exists).
+- **Global, not scoped** — `~/.zshenv` is read by *every* zsh, so it stripped
+  the prompt from Terminal.app too, and from the shell that runs
+  `darwin-rebuild` itself.
+- **Lossy** — the hand-rolled `.zshrc` re-derived `$PATH` from scratch and
+  dropped everything else, which is why tools that were "missing" from it looked
+  like PATH bugs when they were simply not in the config at all.
+
+`ZDOTDIR` hijacking from `~/.zshenv` is never the right move on these machines.
+A `$TERM_PROGRAM` guard inside the managed file is: it is scoped to one program,
+survives rebuilds, and leaves nothing outside the store to drift.
+
+To undo that specific hack: `rm ~/.zshenv`, `rm -rf ~/.kiro/zdotdir
+~/.kiro/zsh-backup`, move any stale `~/.zsh*.backup` aside, revert
+`terminal.integrated.*` in `~/Library/Application Support/Kiro/User/settings.json`
+(not nix-managed, same as VS Code's), then switch.
+
 ## Adding new entries
 
 When you hit a failure mode that took non-obvious diagnosis and you

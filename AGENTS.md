@@ -299,6 +299,14 @@ but runs a **lean work profile**:
   is in nixpkgs) and `cleanup = "none"` for the same omlx dependency-closure reason.
 - **Work-only cask:** `kiro` (AWS Kiro, the agentic IDE). It is backed by a work AWS
   account / Kiro subscription, so it stays off the personal M3 and the test VM.
+- **Kiro-scoped prompt guard:** unlike `adbell.nix`, this config sets
+  `programs.oh-my-posh.enableZshIntegration = false` and emits the
+  `oh-my-posh init zsh` eval by hand in `programs.zsh.initContent`, wrapped in
+  `if [[ "$TERM_PROGRAM" != "kiro" ]]`. oh-my-posh's `precmd` hook clobbers
+  Kiro's terminal shell-integration markers, breaking output capture and exit
+  codes for its agent. The prompt is unchanged in every other terminal, and only
+  the prompt is suppressed — antidote, aliases and `$PATH` still load inside
+  Kiro. See the Troubleshooting entry below.
 
 ### Standard Configurations
 
@@ -491,6 +499,31 @@ before home-manager links anything); (4) only then suspect the config.
 **Do not assume symlink traversal.** Kiro reads skills through bare
 `/nix/store` symlinks fine. That mechanism was diagnosed here and did **not**
 apply; `recursive = true` is not needed anywhere. Full entry in
+`docs/troubleshooting.md`.
+
+### Kiro's agent reports exit code -1 / captures the prompt as command output
+
+**Applies to `MacBookPro` only.**
+
+**Symptom:** Kiro's agent gets the oh-my-posh prompt box and the echoed input
+line back as "command output", `exit code -1` instead of the real status, or
+hangs in `Working...`. Typing commands by hand in the same terminal works fine.
+
+**Diagnosis:** Kiro drives its terminal through VS Code-style shell integration,
+which wraps each command in escape-sequence markers. oh-my-posh re-renders
+`PROMPT` from a `precmd` hook on every draw and wipes those markers, so Kiro has
+no command boundaries and nowhere to read the exit status from. Kiro's own docs
+name oh-my-posh and Powerlevel10k as the culprits.
+
+**Fix:** gate the prompt on `$TERM_PROGRAM` (Kiro sets `TERM_PROGRAM=kiro`) —
+`programs.oh-my-posh.enableZshIntegration = false` plus a guarded
+`eval "$(oh-my-posh init zsh …)"` in `programs.zsh.initContent`. Already wired in
+`homeConfigurations/MacBookPro.nix`. Restart Kiro fully afterwards.
+
+**Do not** fix this by hand-editing `~/.zshenv` / `~/.zshrc` or hijacking
+`ZDOTDIR` — that is global (it strips the prompt from Terminal.app and from the
+`darwin-rebuild` shell) and the next activation fights it. Full entry, including
+how to undo that hack if an agent has already applied it, in
 `docs/troubleshooting.md`.
 
 ## Important Constraints
