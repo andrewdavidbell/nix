@@ -220,6 +220,34 @@ let
 
               [[ -e ~/.config/op/plugins.sh ]] && source ~/.config/op/plugins.sh
             ''
+            # Machine-local overlay — the writable half of the "managed base +
+            # writable local overlay" pattern (docs/patterns.md), applied to the
+            # shell. Sourced last so it can override anything nix or antidote
+            # set up. Both files are optional, so this is a no-op on a machine
+            # that has neither.
+            #
+            #   local.zsh    on-the-fly tweaks: aliases, functions, PATH bits.
+            #                Either get promoted into this file later, or stay
+            #                machine-specific forever.
+            #   secrets.zsh  tokens and API keys (chmod 600). Never in this
+            #                repo — it's public — and never in
+            #                home.sessionVariables, which renders into a
+            #                world-readable /nix/store path. Prefer an
+            #                `op://` reference (as FluxCD above) where the
+            #                consumer can resolve one; secrets.zsh is for the
+            #                tokens that must be a literal value in the
+            #                environment.
+            #
+            # `if` rather than `[[ … ]] && source`, so a missing file doesn't
+            # leave $? nonzero for the first prompt to render as an error.
+            (lib.mkAfter ''
+              if [[ -f "$HOME/.config/zsh/local.zsh" ]]; then
+                source "$HOME/.config/zsh/local.zsh"
+              fi
+              if [[ -f "$HOME/.config/zsh/secrets.zsh" ]]; then
+                source "$HOME/.config/zsh/secrets.zsh"
+              fi
+            '')
           ];
           antidote = {
             enable = true;

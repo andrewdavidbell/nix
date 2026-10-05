@@ -119,8 +119,19 @@ Settings Sync to pull down extensions and settings.
 The following shell configuration is captured in `homeConfigurations/adbell.nix`:
 
 - **`home.sessionPath`:** `~/.local/bin` (uv, and Go's `GOBIN` — see below)
-- **`shellAliases`:** `ic` (iCloud Drive), `ob` (Obsidian vault)
-- **`initExtra`:** NVM initialisation, `vm()` neovim config selector, 1Password plugins source
+- **`shellAliases`:** `ic` (iCloud Drive), `ob` (Obsidian vault), `src` (local source tree)
+- **`initContent`:** NVM initialisation, `vm()` neovim config selector, `genpass()`, 1Password SSH-agent/biometric env, FluxCD `op://` refs, 1Password plugins source
+
+All three home configs end `initContent` with a **machine-local overlay** —
+a `lib.mkAfter` block that sources `~/.config/zsh/local.zsh` and
+`~/.config/zsh/secrets.zsh` when they exist. Both files are unmanaged, created
+by hand per machine (like `~/.gitconfig.local`), and guarded, so a machine with
+neither is unaffected. `local.zsh` is for on-the-fly aliases/functions/PATH bits
+that either graduate into the repo later or stay machine-specific; `secrets.zsh`
+(chmod 600) is for tokens that must be a literal value in the environment —
+never `home.sessionVariables`, which renders into a world-readable store path.
+`mkAfter` is load-bearing: it puts the overlay after antidote, oh-my-posh and
+the aliases, so it can override them. See `docs/patterns.md`.
 
 ### Go toolchain
 

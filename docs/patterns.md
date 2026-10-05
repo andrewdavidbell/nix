@@ -107,6 +107,19 @@ or a custom-path override. Checklist:
   (`programs.git` in the home configs) and machine-local identity
   lives in `~/.gitconfig.local` via `programs.git.includes`. See the
   "Important Constraints" section in `CLAUDE.md`.
+- **Zsh** applies it to the shell itself, in all three home configs:
+  `programs.zsh.initContent` is the managed baseline, and a
+  `lib.mkAfter` block sources `~/.config/zsh/local.zsh` and
+  `~/.config/zsh/secrets.zsh` if they exist. Both are unmanaged and
+  off-repo. `mkAfter` is what makes it an overlay rather than just
+  another fragment — it lands after antidote, oh-my-posh and the
+  aliases, so it can override them. Neither file is seeded at
+  activation (step 6 above doesn't apply: a missing `source` target is
+  guarded, not an error), so this is a no-op on a machine with
+  neither. `secrets.zsh` exists because `home.sessionVariables` is the
+  wrong home for a token — home-manager renders it into
+  `~/.nix-profile/etc/profile.d/hm-session-vars.sh` in the store,
+  which is world-readable, quite apart from this repo being public.
 
 ---
 
