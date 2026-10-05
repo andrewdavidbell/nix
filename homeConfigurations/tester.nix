@@ -25,6 +25,11 @@ let
           pkgs.google-cloud-sdk
           pkgs.jq
           pkgs.k3d
+          pkgs.k9s
+          # Helm. The attribute is kubernetes-helm; `pkgs.helm` is an
+          # unrelated Haskell package, and the binary this installs is
+          # plain `helm`.
+          pkgs.kubernetes-helm
           pkgs.llmfit
           pkgs.mas
           pkgs.opencode
