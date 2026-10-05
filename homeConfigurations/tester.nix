@@ -29,6 +29,15 @@ let
           pkgs.mas
           pkgs.opencode
           pkgs.pwgen
+          # Terraform version manager. Deliberately *not* alongside
+          # pkgs.terraform: tfenv ships its own bin/terraform shim, so the two
+          # collide on the same path and buildEnv refuses to build the profile
+          # ("two given paths contain a conflicting subpath"). tfenv owns the
+          # terraform name here, and versions come from `tfenv install` /
+          # per-repo .terraform-version files. Consequence: the terraform
+          # binaries themselves are HashiCorp downloads under ~/.tfenv, outside
+          # nix and not reproducible from the flake lock.
+          pkgs.tfenv
           # Required by nvim-treesitter's `main` branch, which compiles parsers
           # at install time via the tree-sitter CLI (unlike `master`, which
           # shipped precompiled .so files).
@@ -42,6 +51,11 @@ let
         sessionVariables = {
           HOMEBREW_NO_ANALYTICS = 1;
           EDITOR = "nvim";
+          # tfenv derives TFENV_ROOT from where its shim lives, which under nix
+          # is a read-only store path, and TFENV_CONFIG_DIR defaults to
+          # TFENV_ROOT. Left unset, `tfenv install` tries to write versions into
+          # /nix/store and fails. Name a writable dir explicitly.
+          TFENV_CONFIG_DIR = "${homeDirectory}/.tfenv";
         };
       };
       xdg.configFile = {

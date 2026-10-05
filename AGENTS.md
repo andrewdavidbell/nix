@@ -180,6 +180,22 @@ repo without first moving the account IDs and SSO start URL into an off-repo fil
 read at activation time. The AWS config format has no native `include` directive, so
 the "managed base + writable local overlay" pattern below does not apply directly.
 
+### Terraform (tfenv)
+
+Terraform goes through `pkgs.tfenv` in all three home configs rather than
+`pkgs.terraform`, so per-repo `.terraform-version` pins are honoured.
+
+**Not both.** `tfenv` ships its own `bin/terraform` shim, so adding
+`pkgs.terraform` alongside it makes the home-manager profile fail to build
+outright (`two given paths contain a conflicting subpath`). tfenv owns the
+`terraform` name; the binaries it manages are HashiCorp downloads under
+`~/.tfenv`, outside the flake lock and not reproducible from it.
+
+`TFENV_CONFIG_DIR` has to be set explicitly (it is, in `home.sessionVariables`):
+tfenv derives `TFENV_ROOT` from its shim's location, which under nix is a
+read-only store path, and `TFENV_CONFIG_DIR` defaults to `TFENV_ROOT` — so
+`tfenv install` would otherwise try to write versions into `/nix/store`.
+
 ### AI agents (`agentic-config`)
 
 Every AI agent is configured by the external [`agentic-config`](https://github.com/andrewdavidbell/agentic-config)
