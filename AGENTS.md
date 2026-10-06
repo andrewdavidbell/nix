@@ -221,13 +221,40 @@ clusters (`kubectl` has refused in-tree GCP auth since 1.26). It has to be a
 standalone binary on `$PATH`, which is what the wrapper achieves — it is not
 something gcloud provides as a subcommand.
 
-Note `kubectl` itself is **not** nix-managed on any machine: it comes from the
-container runtime's GUI install (Docker Desktop on the M3, via
-`/usr/local/bin/kubectl`; Rancher Desktop's `~/.rd/bin` on the work machine).
-That matches the repo's prefer-containers philosophy, but it means the kubectl
-version is undeclared and drifts independently of the flake lock. Do not add
-`pkgs.kubectl` to resolve a GKE auth problem without first checking which
-kubectl is actually winning on `$PATH`.
+#### `kubectl` is not nix-managed (and shouldn't be)
+
+`kubectl` comes from the container runtime's GUI install on both machines, and
+the two differ in a way that matters:
+
+- **M3** — Docker Desktop, via `/usr/local/bin/kubectl` symlinked into
+  `/Applications/Docker.app/`. A plain, static binary.
+- **Work machine** — Rancher Desktop's `~/.rd/bin/kubectl`, which is **not
+  kubectl**. It is a symlink to [`kuberlr`](https://github.com/flavio/kuberlr),
+  a shim that asks the cluster's API server for its version, downloads a
+  matching client into `~/.kuberlr/`, and execs that. `~/.rd/bin` is on
+  `home.sessionPath`, so it wins over the nix profile.
+
+**Expected consequence, not a fault:** the first `kubectl` command against a new
+cluster pauses to download a client (e.g. `1.35.8-gke.1225000` against GKE).
+Observed on the work machine 6 Oct 2026 on the first `kgno` after the GKE auth
+plugin landed. It also means a *successful* download is positive evidence the
+auth plugin is working — kuberlr cannot learn the server version without
+authenticating first, so a missing plugin fails before any download happens.
+
+**Do not add `pkgs.kubectl`.** It would be inert on both machines — shadowed by
+`~/.rd/bin` on the work machine and by `/usr/local/bin` on the M3 — so it adds a
+declared-but-unused binary and a second version to reason about, while fixing
+nothing. Version-matching is also the behaviour you want against GKE, where
+managed upgrades move the server under you and kubectl tolerates only ±1 minor
+of skew.
+
+The real cost to accept: kubectl's version is undeclared and outside the flake
+lock on both machines. When diagnosing anything kubectl-shaped, establish which
+binary is winning *before* touching this repo:
+
+```bash
+which -a kubectl && readlink -f "$(which kubectl)" && ls ~/.kuberlr/*/ 2>/dev/null
+```
 
 ### Terraform (tfenv)
 
