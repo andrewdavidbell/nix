@@ -37,6 +37,10 @@ let
           ])
           pkgs.jq
           pkgs.k9s
+          # Ships both `kubectx` (switch cluster context) and `kubens`
+          # (switch default namespace). Interactive fuzzy selection needs
+          # fzf on $PATH, which programs.fzf below provides.
+          pkgs.kubectx
           # Helm. The attribute is kubernetes-helm; `pkgs.helm` is an
           # unrelated Haskell package, and the binary this installs is
           # plain `helm`.

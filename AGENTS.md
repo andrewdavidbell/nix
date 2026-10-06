@@ -256,6 +256,23 @@ binary is winning *before* touching this repo:
 which -a kubectl && readlink -f "$(which kubectl)" && ls ~/.kuberlr/*/ 2>/dev/null
 ```
 
+#### Context switching
+
+`pkgs.kubectx` is in all three profiles, providing both `kubectx` (switch cluster
+context) and `kubens` (switch default namespace) from the one package — there is
+no separate `pkgs.kubens`. Interactive fuzzy selection works because
+`programs.fzf` is already enabled in all three configs; without `fzf` on `$PATH`
+both commands still function but degrade to printing the list rather than
+offering a picker.
+
+Unlike `kubectl`, these are **not** shadowed by Rancher or Docker Desktop —
+neither ships them — so the nix copy is the one that runs.
+
+The oh-my-zsh `kubectl` plugin (loaded via antidote in all three configs)
+supplies the `k*` aliases such as `kgno` → `kubectl get nodes`, and also defines
+a `kctx` alias. It does not provide `kubectx`/`kubens` themselves, which is why
+the package is declared here.
+
 ### Terraform (tfenv)
 
 Terraform goes through `pkgs.tfenv` in all three home configs rather than
