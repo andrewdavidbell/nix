@@ -24,8 +24,23 @@ let
         packages = [
           pkgs.awscli2
           pkgs.gh
-          pkgs.google-cloud-sdk
+          # gcloud, plus the GKE auth plugin. Extra components must come from
+          # this wrapper, never `gcloud components install`: the SDK is a
+          # read-only store path, so gcloud's own component manager cannot
+          # write to it. Same reason `gcloud components update` fails — the
+          # version is whatever nixpkgs pins, bumped via `nix flake update`.
+          # The plugin is the credential helper kubectl execs for GKE clusters;
+          # it must exist as its own binary on $PATH, which is exactly what the
+          # wrapper puts in the profile's bin.
+          (pkgs.google-cloud-sdk.withExtraComponents [
+            pkgs.google-cloud-sdk.components.gke-gcloud-auth-plugin
+          ])
           pkgs.jq
+          pkgs.k9s
+          # Helm. The attribute is kubernetes-helm; `pkgs.helm` is an
+          # unrelated Haskell package, and the binary this installs is
+          # plain `helm`.
+          pkgs.kubernetes-helm
           pkgs.llmfit
           pkgs.opencode
           pkgs.ruff

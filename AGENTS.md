@@ -191,6 +191,44 @@ repo without first moving the account IDs and SSO start URL into an off-repo fil
 read at activation time. The AWS config format has no native `include` directive, so
 the "managed base + writable local overlay" pattern below does not apply directly.
 
+### Google Cloud SDK (gcloud)
+
+All three home configs install gcloud through the `withExtraComponents` wrapper
+rather than bare `pkgs.google-cloud-sdk`, currently with one component:
+
+```nix
+(pkgs.google-cloud-sdk.withExtraComponents [
+  pkgs.google-cloud-sdk.components.gke-gcloud-auth-plugin
+])
+```
+
+**`gcloud components install` and `gcloud components update` do not work here**
+and never will — the SDK lives in a read-only store path, so gcloud's own
+component manager has nothing it can write to. Two consequences:
+
+- **Components come from the wrapper**, added to all three configs together.
+  Enumerate what's available with
+  `nix eval --impure --json --expr 'builtins.attrNames (builtins.getFlake (toString ./.)).inputs.nixpkgs.legacyPackages.aarch64-darwin.google-cloud-sdk.components'`.
+  Ignore the per-platform variants (`*-darwin-arm` etc.) — name the bare
+  component and nixpkgs selects the right one.
+- **The SDK version is whatever nixpkgs pins**, bumped by `nix flake update`,
+  not by gcloud. `gcloud components list` will cheerfully report a newer
+  upstream release and offer the update command; that report is accurate about
+  upstream and irrelevant here.
+
+`gke-gcloud-auth-plugin` is the credential helper `kubectl` execs for GKE
+clusters (`kubectl` has refused in-tree GCP auth since 1.26). It has to be a
+standalone binary on `$PATH`, which is what the wrapper achieves — it is not
+something gcloud provides as a subcommand.
+
+Note `kubectl` itself is **not** nix-managed on any machine: it comes from the
+container runtime's GUI install (Docker Desktop on the M3, via
+`/usr/local/bin/kubectl`; Rancher Desktop's `~/.rd/bin` on the work machine).
+That matches the repo's prefer-containers philosophy, but it means the kubectl
+version is undeclared and drifts independently of the flake lock. Do not add
+`pkgs.kubectl` to resolve a GKE auth problem without first checking which
+kubectl is actually winning on `$PATH`.
+
 ### Terraform (tfenv)
 
 Terraform goes through `pkgs.tfenv` in all three home configs rather than
