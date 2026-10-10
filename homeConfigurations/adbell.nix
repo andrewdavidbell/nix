@@ -205,7 +205,17 @@ let
         oh-my-posh = {
           enable = true;
           enableZshIntegration = true;
-          useTheme = "powerlevel10k_rainbow";
+          # Vendored theme rather than `useTheme`. Upstream
+          # powerlevel10k_rainbow ships no kubectl segment, and a theme from
+          # the package is a read-only store path, so it cannot be extended in
+          # place. `settings`, `useTheme` and `configFile` are mutually
+          # exclusive (home-manager asserts on more than one), so gaining one
+          # segment means owning the whole file. Copied verbatim from
+          # oh-my-posh 29.14.0 with a single kubectl segment inserted after
+          # `aws` — diff it against
+          # ${pkgs.oh-my-posh}/share/oh-my-posh/themes/ after a version bump
+          # and only that insertion should show.
+          configFile = ../oh-my-posh/powerlevel10k_rainbow.omp.json;
         };
         ripgrep = {
           enable = true;

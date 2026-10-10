@@ -179,8 +179,13 @@ let
           # The zsh integration is hand-rolled in programs.zsh.initContent below
           # so it can be gated on $TERM_PROGRAM. Kiro's terminal shell
           # integration breaks when a precmd prompt engine re-renders PROMPT, so
-          # the theme name travels with that eval rather than living in useTheme
-          # here. See docs/troubleshooting.md.
+          # the theme path travels with that eval rather than living in
+          # useTheme/configFile here. See docs/troubleshooting.md.
+          #
+          # Consequence worth knowing: because the path is written out by hand
+          # down there, this machine does NOT pick up a theme change made via
+          # the option. Both places move together or the prompt silently
+          # diverges from the other two machines.
           enableZshIntegration = false;
         };
         ripgrep = {
@@ -210,7 +215,7 @@ let
               # keep the rainbow prompt. See docs/troubleshooting.md.
               if [[ "$TERM_PROGRAM" != "kiro" ]]; then
                 eval "$(${pkgs.oh-my-posh}/bin/oh-my-posh init zsh \
-                  --config ${pkgs.oh-my-posh}/share/oh-my-posh/themes/powerlevel10k_rainbow.omp.json)"
+                  --config ${../oh-my-posh/powerlevel10k_rainbow.omp.json})"
               fi
 
               export NVM_DIR="$HOME/.nvm"

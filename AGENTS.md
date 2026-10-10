@@ -133,6 +133,56 @@ never `home.sessionVariables`, which renders into a world-readable store path.
 `mkAfter` is load-bearing: it puts the overlay after antidote, oh-my-posh and
 the aliases, so it can override them. See `docs/patterns.md`.
 
+#### oh-my-posh theme is vendored, not `useTheme`
+
+`oh-my-posh/powerlevel10k_rainbow.omp.json` is a **copy of the upstream theme
+from oh-my-posh 29.14.0**, carrying one local change: a `kubectl` segment in the
+right-hand block, inserted immediately after `aws`.
+
+It is vendored because the upstream theme has no kubectl segment and a theme
+shipped in the package is a read-only store path, so it cannot be extended in
+place. `settings`, `useTheme` and `configFile` are **mutually exclusive** —
+home-manager asserts if more than one is set — so gaining a single segment means
+owning the whole file.
+
+**Both places must move together.** `adbell.nix` and `tester.nix` set
+`configFile`; `MacBookPro.nix` has `enableZshIntegration = false` for the Kiro
+prompt guard and writes the path by hand into `programs.zsh.initContent`, so it
+does *not* follow the option. Changing one and not the other silently diverges
+that machine's prompt. After any change, confirm all three agree:
+
+```bash
+for c in adbell tester MacBookPro; do
+  nix eval --raw ".#homeConfigurations.$c.config.home.file.\"./.zshrc\".text" \
+    | grep -o '\-\-config [^ )"]*'
+done
+```
+
+On an oh-my-posh version bump, diff the vendored file against
+`${pkgs.oh-my-posh}/share/oh-my-posh/themes/powerlevel10k_rainbow.omp.json`;
+only the kubectl insertion should show. The file is otherwise byte-identical to
+29.14.0 so that diff stays meaningful — keep it that way.
+
+Two things verified about the segment, so they don't get re-litigated:
+
+- **It hides itself** when there is no current context (empty `~/.kube/config`
+  or none at all), so machines with no clusters see no change.
+- **It never execs `kubectl`.** Tested with a decoy `kubectl` first on `$PATH`:
+  never called, ~20 ms render. oh-my-posh parses the kubeconfig directly, so
+  the `parse_kubeconfig` property is unnecessary here and, importantly, the
+  prompt does not invoke kuberlr on `MacBookPro` on every draw.
+
+Colour comes from `background_templates`: red `#cc0000` for a context
+containing `prod`/`production`, amber `#a56e00` for `stag`/`test`/`dev`,
+otherwise Kubernetes blue `#316ce6`. Those are substring matches on the context
+name — if a cluster is named in a way that doesn't carry its environment, it
+renders blue, which reads as "not production" and would be misleading. Add the
+name to the templates rather than relying on the default.
+
+Also note the theme is a **flake input by path**, so a new or renamed theme file
+must be `git add`ed before it is visible to `nix build` — an untracked file
+fails evaluation with `Path '...' is not tracked by Git`.
+
 ### Go toolchain
 
 `programs.go.enable` is set in all three home configs, each with the same
@@ -718,7 +768,10 @@ how to undo that hack if an agent has already applied it, in
   you@example.com namespaces="git" ssh-ed25519 AAAA...
   ```
 - **Editor:** Neovim is set as the default editor
-- **Shell:** Zsh with oh-my-posh (powerlevel10k_rainbow theme) and antidote plugin manager
+- **Shell:** Zsh with oh-my-posh and antidote plugin manager. The theme is a
+  **vendored** copy of powerlevel10k_rainbow at `oh-my-posh/`, not `useTheme` —
+  see Shell Environment above before changing it, and note `MacBookPro.nix`
+  writes the theme path by hand.
 
 ## Modification Guidelines
 
