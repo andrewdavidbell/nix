@@ -149,7 +149,7 @@
           "invert_powerline": true,
           "powerline_symbol": "\ue0b2",
           "style": "powerline",
-          "template": " {{ .Context }}{{ if .Namespace }}:{{ .Namespace }}{{ end }} \u2388 ",
+          "template": " {{ .Context }}{{ if .Namespace }}:{{ .Namespace }}{{ end }} \udb84\udcfe ",
           "type": "kubectl"
         },
         {
