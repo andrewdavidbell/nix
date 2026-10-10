@@ -409,6 +409,100 @@ To undo that specific hack: `rm ~/.zshenv`, `rm -rf ~/.kiro/zdotdir
 `terminal.integrated.*` in `~/Library/Application Support/Kiro/User/settings.json`
 (not nix-managed, same as VS Code's), then switch.
 
+---
+
+## `kubectl` tab-completion does nothing
+
+### Symptom
+
+`kubectl get po<TAB>` just inserts a literal tab, or beeps, in a shell where
+everything else completes fine. `kubectl` itself runs normally. Most likely on
+`MacBookPro`, where `kubectl` is kuberlr, but the same mechanism can misfire
+anywhere.
+
+### What's actually happening
+
+Nothing in this repo declares kubectl completion. It comes from the oh-my-zsh
+`kubectl` plugin (loaded via antidote in all three home configs), which on every
+shell start backgrounds:
+
+```zsh
+zf_mv -f -- =( kubectl completion zsh 2> /dev/null ) "$ZSH_CACHE_DIR/completions/_kubectl"
+```
+
+This repo supplies only the directory it writes into — the `lib.mkBefore` block
+in each home config exports `ZSH_CACHE_DIR="$HOME/.cache/zsh"`, creates
+`completions/`, and that path ends up first on `fpath`.
+
+Two properties of that one line cause nearly every failure:
+
+- **stderr is discarded, and `zf_mv` moves the file regardless of exit status.**
+  If `kubectl completion zsh` fails, the result is a zero-byte `_kubectl` in the
+  cache and no error anywhere. On `MacBookPro` the generator runs through
+  kuberlr, which must reach a cluster's API server (or find a cached client in
+  `~/.kuberlr/`) before it can delegate — so an unauthenticated or
+  freshly-provisioned machine poisons the cache on the very first shell.
+- **It is asynchronous (`&|`), so the cache is always one shell behind.** The
+  current shell loads the *previous* snapshot. The first shell opened after a
+  kubectl version change completes against the old client's flags; the next one
+  is correct. A single new shell is therefore not enough to confirm a fix.
+
+`k` is unaffected by any of this when it works: `complete_aliases` is off (zsh's
+default, and oh-my-zsh doesn't change it), so zsh expands `k` → `kubectl` before
+completion and the same `_kubectl` applies. No separate `compdef` exists for it.
+
+### Fix
+
+1. Look at the cache before suspecting the plugin or this repo:
+
+   ```bash
+   wc -l ~/.cache/zsh/completions/_kubectl   # healthy: ~200 lines
+   ```
+
+2. If it's empty or truncated, run the generator by hand to see the error the
+   plugin swallowed:
+
+   ```bash
+   kubectl completion zsh | head -5
+   ```
+
+3. On `MacBookPro`, a kuberlr error here means it has no client to delegate to.
+   Authenticate once against any cluster (`kubectl version` is enough to trigger
+   the download), then clear the poisoned cache:
+
+   ```bash
+   rm ~/.cache/zsh/completions/_kubectl
+   ```
+
+4. Open **two** new shells — the first regenerates the cache, the second loads
+   it. Then confirm the binding directly rather than by eye:
+
+   ```bash
+   zsh -i -c 'echo ${_comps[kubectl]:-NONE}'   # expect: _kubectl
+   ```
+
+Do **not** "fix" this by adding `kubectl completion zsh` to `initContent`, or by
+adding `pkgs.kubectl` for its completions. The first runs a cluster-dependent
+subprocess synchronously on every shell start (and on `MacBookPro` can block on
+a kuberlr download); the second installs a binary that is shadowed on both
+machines — see the kubectl section of `AGENTS.md`.
+
+### Prevention
+
+`kubectx` and `kubens` have none of this fragility, and are the model to copy:
+nixpkgs installs their upstream `#compdef`-tagged completions into
+`share/zsh/site-functions`, which is on `fpath` already, so they are declared,
+version-locked and generated at build time rather than at shell start. When
+these two don't complete, the cause is almost never completion — it's that the
+generation adding `pkgs.kubectx` was never activated on that machine:
+
+```bash
+ls /etc/profiles/per-user/<user>/bin | grep kubectx
+```
+
+A clean `nix build` proves nothing here; only activation puts the completions on
+`fpath`.
+
 ## Adding new entries
 
 When you hit a failure mode that took non-obvious diagnosis and you

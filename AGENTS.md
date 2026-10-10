@@ -269,9 +269,52 @@ Unlike `kubectl`, these are **not** shadowed by Rancher or Docker Desktop —
 neither ships them — so the nix copy is the one that runs.
 
 The oh-my-zsh `kubectl` plugin (loaded via antidote in all three configs)
-supplies the `k*` aliases such as `kgno` → `kubectl get nodes`, and also defines
-a `kctx` alias. It does not provide `kubectx`/`kubens` themselves, which is why
-the package is declared here.
+supplies the `k*` aliases such as `kgno` → `kubectl get nodes` and `kcuc` →
+`kubectl config use-context`. It does not provide `kubectx`/`kubens` themselves,
+which is why the package is declared here.
+
+#### Shell completion
+
+Nothing in this repo declares kubectl completion — it arrives with that same
+oh-my-zsh `kubectl` plugin, which on every shell start backgrounds
+
+```zsh
+zf_mv -f -- =( kubectl completion zsh 2> /dev/null ) "$ZSH_CACHE_DIR/completions/_kubectl"
+```
+
+What this repo *does* supply is the directory it writes into: the `lib.mkBefore`
+block in each home config exports `ZSH_CACHE_DIR="$HOME/.cache/zsh"` and
+`mkdir -p`s `completions/`, and that path lands first on `fpath`. Delete the
+`mkBefore` block and completion silently stops — the plugin has nowhere to write.
+
+Three consequences:
+
+- **It is a cache, one shell behind.** The regeneration is asynchronous (`&|`),
+  so the current shell loads the *previous* snapshot. The first shell opened
+  after a kubectl version change completes against the old client's flags; the
+  one after that is correct.
+- **`k` completes as `kubectl`** because `complete_aliases` is off (zsh's
+  default, and oh-my-zsh doesn't change it) — zsh expands the alias before
+  completion, so no extra `compdef` is needed.
+- **Silent-failure mode on `MacBookPro`.** `kubectl` there is kuberlr, so the
+  generator runs through the shim. stderr is discarded and `zf_mv` moves the
+  file *regardless of exit status*, so a kuberlr failure (no reachable cluster
+  and nothing cached in `~/.kuberlr/`) caches an **empty** `_kubectl` and
+  completion just stops with no error. Check
+  `wc -l ~/.cache/zsh/completions/_kubectl` (healthy: ~200 lines) before
+  suspecting the plugin or this repo — full recipe in the Troubleshooting
+  section below.
+
+`kubectx`/`kubens` completion needs no wiring either, but comes a different way:
+nixpkgs' kubectx runs `installShellCompletion completion/*` over upstream's
+`_kubectx.zsh` / `_kubens.zsh`, both of which carry real `#compdef` headers, so
+they install to `share/zsh/site-functions` in the profile — already on `fpath`.
+Note `_kubectx.zsh`'s header is `#compdef kubectx kctx=kubectx`, so it also
+claims the `kctx` command name (completing context names, which is harmless).
+If these don't complete, the likely cause is that the generation adding
+`pkgs.kubectx` hasn't been activated on that machine — check
+`ls /etc/profiles/per-user/<user>/bin | grep kubectx` before looking anywhere
+else.
 
 ### Terraform (tfenv)
 
@@ -609,6 +652,30 @@ before home-manager links anything); (4) only then suspect the config.
 `/nix/store` symlinks fine. That mechanism was diagnosed here and did **not**
 apply; `recursive = true` is not needed anywhere. Full entry in
 `docs/troubleshooting.md`.
+
+### `kubectl` tab-completion does nothing
+
+**Symptom:** `kubectl get po<TAB>` inserts a literal tab in a shell where
+everything else completes. `kubectl` itself works.
+
+**Diagnosis:** completion is not declared in this repo — the oh-my-zsh `kubectl`
+plugin regenerates `$ZSH_CACHE_DIR/completions/_kubectl` in the background on
+every shell start, discarding stderr and moving the file *regardless of exit
+status*. A failed generator therefore caches an empty file silently. Most likely
+on `MacBookPro`, where the generator runs through kuberlr and needs a reachable
+API server (or a cached client in `~/.kuberlr/`) first.
+
+**Fix:** `wc -l ~/.cache/zsh/completions/_kubectl` (healthy: ~200 lines) → run
+`kubectl completion zsh | head -5` by hand to see the swallowed error →
+authenticate if kuberlr has no client → `rm` the poisoned cache → open **two**
+new shells (generation is async, so the cache is always one shell behind) →
+verify with `zsh -i -c 'echo ${_comps[kubectl]:-NONE}'`.
+
+**Do not** add `kubectl completion zsh` to `initContent` (synchronous,
+cluster-dependent subprocess on every shell start) or add `pkgs.kubectl` for its
+completions (shadowed on both machines). `kubectx`/`kubens` get theirs from
+nixpkgs at build time and are unaffected; if *those* don't complete, the
+generation was never activated. Full entry in `docs/troubleshooting.md`.
 
 ### Kiro's agent reports exit code -1 / captures the prompt as command output
 
