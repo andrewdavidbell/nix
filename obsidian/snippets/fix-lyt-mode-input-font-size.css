@@ -1,0 +1,38 @@
+/* Fix wrong text size in search and other UI input fields.
+ *
+ * Cause: LYT Mode 1.9.1 (theme.css:5410) sets
+ *     font-size: var(--font-normal);
+ * but --font-normal is a font-WEIGHT token (theme.css:408 — `--font-normal: 400`,
+ * one of --font-thin/light/normal/medium/semibold). So the declaration resolves
+ * to `font-size: 400` — a unitless, non-zero length, which is invalid CSS.
+ *
+ * Because the value arrived via var(), it cannot be rejected at parse time; it
+ * is "invalid at computed-value time" instead, and font-size being an inherited
+ * property, it computes to `inherit`. The inputs therefore take their
+ * container's font size rather than a UI size. Being the last such rule in the
+ * theme, it also overrides the theme's own correct rule at theme.css:3041.
+ *
+ * Verified 11 Oct 2026 against LYT Mode 1.9.1, which is both the installed and
+ * the current upstream version (nickmilo/LYT-Mode@main, byte-identical) — so
+ * updating the theme does not fix this.
+ *
+ * `body` prefixes only raise specificity above the theme's rule; snippets load
+ * after the theme anyway, so this is belt-and-braces.
+ */
+
+body .textarea,
+body input[type='text'],
+body input[type='search'],
+body input[type='email'],
+body input[type='password'],
+body input[type='number'],
+body input.document-search-input,
+body input.document-replace-input {
+  font-size: var(--font-ui-medium);
+}
+
+/* Quick switcher / command palette: restore the theme's intended size
+ * (theme.css:3040-3042), which line 5410 was clobbering. */
+body input.prompt-input {
+  font-size: calc(2px + var(--font-ui-medium));
+}

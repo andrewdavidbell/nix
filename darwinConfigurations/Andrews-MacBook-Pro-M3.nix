@@ -58,11 +58,14 @@ let
           "logi-options+"
           "makemkv"
           "micro-snitch"
-          # Obsidian is a cask, not pkgs.obsidian / programs.obsidian: the nix
-          # build is a repackaged, re-signed Electron app living under the
-          # home-manager app dir, and it did not sit right with macOS. The
-          # vendor ships its own auto-updater, which is exactly the case the
-          # cask policy exists for.
+          # Obsidian is a cask, not pkgs.obsidian / programs.obsidian. Both
+          # routes ship the same vendor .app from the official DMG (nixpkgs
+          # just `cp -R`s it), so this is not about a broken nix build — the
+          # cask wins only on sitting in /Applications proper (obsidian:// URL
+          # scheme, Spotlight) and tracking upstream ahead of the nixpkgs pin.
+          # Cost: the version floats outside flake.lock, and obsidian-cli is
+          # not on $PATH. Keep `updateDisabled: true` in obsidian.json — brew
+          # owns the version here. See the Obsidian section in AGENTS.md.
           "obsidian"
           "qlmarkdown"
           "stellarium"

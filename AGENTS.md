@@ -117,25 +117,104 @@ Settings Sync to pull down extensions and settings.
 ### Obsidian
 
 Obsidian is the `obsidian` Homebrew cask on all three machines — **not**
-`pkgs.obsidian` and **not** `programs.obsidian`. It was the nix package on the
-M3 and the test VM until 11 Oct 2026, when it was moved to the cask because the
-nix build did not sit right with macOS.
+`pkgs.obsidian` and **not** `programs.obsidian`. It was the nix package on the M3
+and the test VM until 11 Oct 2026.
 
-Two reasons it belongs on Homebrew, both already in the cask policy above:
+**The reason it was moved is not the reason to keep it there.** It was moved on a
+suspicion that nixpkgs' build was behind a UI bug (text in search fields
+rendering at the wrong size). That was wrong — the cask reproduced the bug
+exactly, and the real cause was a theme defect, recorded at the end of this
+section. Do not cite "the nix build is broken on macOS" when revisiting this.
 
-- **Obsidian ships its own auto-updater.** The vendor expects to replace its own
-  bundle in place, which a read-only store path cannot support — the app has to
-  sit somewhere writable to self-update, and a nix version bump is the only way
-  to move it otherwise.
-- **The nix build is a repackaged, re-signed Electron app** living under the
-  home-manager app directory rather than `/Applications` proper — the same shape
-  that makes 1Password a cask.
+What nixpkgs actually does on darwin (`pkgs/by-name/ob/obsidian/package.nix`) is
+`cp -R` the vendor's `.app` out of the **official** `Obsidian-${version}.dmg` —
+the same artefact Homebrew fetches — and wrap two binaries:
 
-Nothing under `~/Library/Application Support/obsidian/` or inside the vault
+```nix
+cp -R ${appname}.app $out/Applications
+makeWrapper …/MacOS/Obsidian     $out/bin/obsidian
+makeWrapper …/MacOS/obsidian-cli $out/bin/obsidian-cli
+```
+
+So the nix route is not a rebuild and not a re-signed bundle; it is the same
+vendor app in a different place. Both options work. The cask wins on narrow
+margins, not principle:
+
+- **`/Applications` proper**, where macOS expects an app that registers the
+  `obsidian://` URL scheme and is found by Spotlight and "Open With", rather than
+  a `copyApps` duplicate under `~/Applications/Home Manager Apps/`.
+- **Tracks upstream.** The cask had 1.14.4 while nixpkgs pinned 1.13.7.
+- **Matches `MacBookPro.nix`**, which was already on the cask, so all three
+  machines agree.
+
+Costs accepted in exchange: the version floats outside `flake.lock`, and
+`obsidian-cli` is no longer on `$PATH` (only the nix derivation wraps it). If
+either matters more than the above, reverting is a small change — drop the cask
+from both darwin configs and restore `programs.obsidian.enable = true` in
+`adbell.nix` and `tester.nix`. Note that reverting today is a **downgrade** of an
+app that has already opened the vaults.
+
+**Leave `"updateDisabled": true` in `~/Library/Application Support/obsidian/obsidian.json`.**
+Homebrew owns the version here (`onActivation.upgrade = true`), so the in-app
+updater must stay off: if the app replaced its own bundle, Homebrew's cask
+metadata would go stale and the next activation would reinstall over it. "It
+self-updates" is therefore *not* an argument for the cask on these machines —
+the updater is deliberately disabled.
+
+Nothing under `~/Library/Application Support/obsidian/` or inside the vaults
 (`~/Library/Mobile Documents/iCloud~md~obsidian/Documents`, reachable via the
-`ob` alias) is nix-managed either way, so the switch is invisible to plugins and
+`ob` alias) is nix-managed either way, so the switch was invisible to plugins and
 notes. The **Local REST API with MCP** plugin that backs the Obsidian MCP server
 is installed in-app, and its API key is per-install — see `docs/mcp-manual.md`.
+
+#### The search-field font-size bug (theme, not packaging)
+
+Symptom: text typed into search and other UI input fields renders at the wrong
+size, in the `My Notes` vault only — the one vault on the **LYT Mode** theme.
+
+Cause: `theme.css:5410` sets `font-size: var(--font-normal)`, but
+`--font-normal` is a font-**weight** token (`theme.css:408`, `--font-normal: 400`,
+alongside `--font-thin`/`--font-light`/`--font-medium`). It resolves to
+`font-size: 400` — a unitless non-zero length, invalid CSS. Arriving via `var()`
+it cannot be rejected at parse time, so it is *invalid at computed-value time*
+instead; `font-size` is inherited, so it computes to `inherit` and the inputs
+take their container's size. Being the file's last such rule, it also overrides
+the theme's own correct rule at `theme.css:3041`.
+
+Fixed by a per-vault CSS snippet. The canonical copy lives in this repo at
+`obsidian/snippets/fix-lyt-mode-input-font-size.css`; it is **copied** into each
+affected vault by hand, not symlinked by home-manager:
+
+```bash
+VAULT="$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents/My Notes"
+mkdir -p "$VAULT/.obsidian/snippets"
+cp obsidian/snippets/fix-lyt-mode-input-font-size.css "$VAULT/.obsidian/snippets/"
+```
+
+Then enable it in Settings → Appearance → CSS snippets (reload, toggle on).
+
+**Per-machine scope.** Both halves of the fix live inside the vault — the file in
+`.obsidian/snippets/`, the enable flag in `.obsidian/appearance.json`
+(`enabledCssSnippets`). So any machine opening the **same** iCloud vault inherits
+both automatically once iCloud syncs; restart Obsidian there if it was already
+running. A machine with its own separate vault on LYT Mode needs the copy
+command above run against that vault. Check which vaults are registered and what
+theme each uses before assuming:
+
+```bash
+python3 -c 'import json,os;print("\n".join(v["path"] for v in json.load(open(os.path.expanduser("~/Library/Application Support/obsidian/obsidian.json")))["vaults"].values()))'
+```
+
+Why copied and not `home.file`: home-manager renders a read-only store symlink,
+and this target is inside iCloud Drive (which handles symlinks poorly) in a
+directory Obsidian itself writes to — the snippet toggle records state in
+`appearance.json`, and the UI offers a delete that would fail against a store
+path. Same managed-file trade-off as elsewhere in this repo, resolved the other
+way because the app owns the directory.
+
+Updating the theme does not help: LYT Mode is abandoned at 1.9.1 (Jan 2024) and
+the installed copy is byte-identical to current `nickmilo/LYT-Mode@main`, bug
+included.
 
 ### Shell Environment
 
