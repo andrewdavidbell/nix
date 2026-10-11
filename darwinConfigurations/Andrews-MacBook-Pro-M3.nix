@@ -44,7 +44,7 @@ let
           # 1Password is a cask (not pkgs._1password-gui): it enforces an
           # integrity check that requires running from /Applications proper,
           # which the home-manager app dir can't satisfy. The op CLI stays in
-          # Nix (pkgs._1password-cli). This is the one GUI app kept as a cask.
+          # Nix (pkgs._1password-cli).
           "1password"
           "anaconda"
           "claude"
@@ -58,6 +58,12 @@ let
           "logi-options+"
           "makemkv"
           "micro-snitch"
+          # Obsidian is a cask, not pkgs.obsidian / programs.obsidian: the nix
+          # build is a repackaged, re-signed Electron app living under the
+          # home-manager app dir, and it did not sit right with macOS. The
+          # vendor ships its own auto-updater, which is exactly the case the
+          # cask policy exists for.
+          "obsidian"
           "qlmarkdown"
           "stellarium"
           "synology-drive"

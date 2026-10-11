@@ -184,9 +184,6 @@ let
           viAlias = true;
           vimAlias = true;
         };
-        obsidian = {
-          enable = true;
-        };
         oh-my-posh = {
           enable = true;
           enableZshIntegration = true;

@@ -114,6 +114,29 @@ nix is best for state you want frozen and diffed in git.
 On a fresh machine, install the cask via `darwin-rebuild switch`, then sign in to
 Settings Sync to pull down extensions and settings.
 
+### Obsidian
+
+Obsidian is the `obsidian` Homebrew cask on all three machines — **not**
+`pkgs.obsidian` and **not** `programs.obsidian`. It was the nix package on the
+M3 and the test VM until 11 Oct 2026, when it was moved to the cask because the
+nix build did not sit right with macOS.
+
+Two reasons it belongs on Homebrew, both already in the cask policy above:
+
+- **Obsidian ships its own auto-updater.** The vendor expects to replace its own
+  bundle in place, which a read-only store path cannot support — the app has to
+  sit somewhere writable to self-update, and a nix version bump is the only way
+  to move it otherwise.
+- **The nix build is a repackaged, re-signed Electron app** living under the
+  home-manager app directory rather than `/Applications` proper — the same shape
+  that makes 1Password a cask.
+
+Nothing under `~/Library/Application Support/obsidian/` or inside the vault
+(`~/Library/Mobile Documents/iCloud~md~obsidian/Documents`, reachable via the
+`ob` alias) is nix-managed either way, so the switch is invisible to plugins and
+notes. The **Local REST API with MCP** plugin that backs the Obsidian MCP server
+is installed in-app, and its API key is per-install — see `docs/mcp-manual.md`.
+
 ### Shell Environment
 
 The following shell configuration is captured in `homeConfigurations/adbell.nix`:
@@ -755,7 +778,7 @@ how to undo that hack if an agent has already applied it, in
 ## Important Constraints
 
 - **Architecture:** All configurations target `aarch64-darwin` (Apple Silicon Macs)
-- **Git signing:** Configured to use 1Password SSH signing for git commits. The signer binary is `op-ssh-sign` from the **1Password Homebrew cask** at `/Applications/1Password.app` — 1Password is the one GUI app kept as a cask rather than nixpkgs, because its integrity check requires running from `/Applications` proper (the `op` CLI stays in Nix via `pkgs._1password-cli`). `programs.git.signing.key` is `null`, so the signing key is supplied via `~/.gitconfig.local` (below).
+- **Git signing:** Configured to use 1Password SSH signing for git commits. The signer binary is `op-ssh-sign` from the **1Password Homebrew cask** at `/Applications/1Password.app` — 1Password is kept as a cask rather than nixpkgs because its integrity check requires running from `/Applications` proper (the `op` CLI stays in Nix via `pkgs._1password-cli`). `programs.git.signing.key` is `null`, so the signing key is supplied via `~/.gitconfig.local` (below).
 - **Git identity:** Name, email, and signing key are intentionally absent from the repo. They live in `~/.gitconfig.local` on the machine, included via `programs.git.includes`. Create this file on any new machine:
   ```ini
   [user]
