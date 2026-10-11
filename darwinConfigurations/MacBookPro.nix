@@ -39,9 +39,9 @@ let
         # Note: Some casks require manual permission grants in System Settings:
         # - ghostty: Privacy & Security > App Management
         casks = [
-          "brave-browser"
+          # "brave-browser" - Managed by Iru
           "ghostty"
-          "google-chrome"
+          # "google-chrome" - Managed by Iru
           # AWS Kiro — work machine only (AWS-account-backed agentic IDE).
           "kiro"
           "logi-options+"
@@ -49,7 +49,7 @@ let
           "obsidian"
           "qlmarkdown"
           "rancher"
-          "slack"
+          # "slack" - Managed by Iru
           "visual-studio-code"
           "zoom"
         ];
