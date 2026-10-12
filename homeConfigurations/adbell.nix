@@ -90,6 +90,9 @@ let
         "nvim-lazynvim/lua".source = ../nvim-lazynvim/lua;
         "nvim-nvchad/init.lua".source = ../nvim-nvchad/init.lua;
         "nvim-nvchad/lua".source = ../nvim-nvchad/lua;
+        # Exam-matched bash shell for CKA/CKAD/CKS drills; launched by kdrill()
+        # in programs.zsh.initContent below. See AGENTS.md → Exam drill shell.
+        "bash/k8s-drill.bashrc".source = ../bash/k8s-drill.bashrc;
       };
       programs = {
         fzf = {
@@ -257,6 +260,20 @@ let
                 fi
                 pwgen -Bsy "$1" 1 | pbcopy
                 echo "Password copied to clipboard"
+              }
+
+              # Drop into the k8s exam drill shell: bash (what the exam gives
+              # you) with a lab-only KUBECONFIG, `k`, and the do/now shortcuts.
+              # Config in ../bash/k8s-drill.bashrc; rationale in AGENTS.md.
+              #
+              # pkgs.bashInteractive rather than `bash` off $PATH: /bin/bash on
+              # macOS is 3.2.57 (2007) and predates what `kubectl completion
+              # bash` needs, and naming the store path pins the drill shell to
+              # the locked version instead of whatever activation last put on
+              # $PATH.
+              kdrill() {
+                ${pkgs.bashInteractive}/bin/bash \
+                  --rcfile ~/.config/bash/k8s-drill.bashrc -i
               }
 
               [[ -e ~/.config/op/plugins.sh ]] && source ~/.config/op/plugins.sh

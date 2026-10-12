@@ -468,6 +468,52 @@ If these don't complete, the likely cause is that the generation adding
 `ls /etc/profiles/per-user/<user>/bin | grep kubectx` before looking anywhere
 else.
 
+#### Exam drill shell (`kdrill`)
+
+`adbell.nix` and `tester.nix` render `bash/k8s-drill.bashrc` to
+`~/.config/bash/k8s-drill.bashrc` and define a `kdrill()` function in
+`programs.zsh.initContent` that launches bash against it. It exists for CKA /
+CKAD / CKS practice, where the exam hands you a plain bash terminal.
+
+**Why a separate shell rather than drilling in zsh.** The oh-my-zsh `kubectl`
+plugin (above) injects ~100 `k*` aliases that do not exist in the exam
+environment, so every drill run in the normal shell trains a reflex that fails
+on the day. Behavioural divergences compound it: bash word-splits unquoted
+scalars and zsh does not (so `kubectl … $do` passes one argument in zsh and
+three in bash), zsh arrays are 1-based against bash's 0-based, zsh's `nomatch`
+aborts on a failed glob where bash passes the pattern through, and `**` works
+natively in zsh but needs `shopt -s globstar` in bash. The rcfile deliberately
+leaves `globstar` off to match the exam.
+
+**`pkgs.bashInteractive`, not `bash` off `$PATH`.** `/bin/bash` on macOS is
+3.2.57 (2007) and predates what `kubectl completion bash` needs. Naming the
+store path also pins the drill shell to the locked version rather than whatever
+activation last put on `$PATH`.
+
+**The kubeconfig is machine-local and off-repo.** `KUBECONFIG` is pinned to
+`~/.kube/drill.config`, which is **not** in this repo — it carries cluster
+credentials and this repo is public (same handling as `~/.aws/config`). Create
+it per machine, lab context only:
+
+```bash
+kubectl config view --minify --flatten --context=<lab-context> \
+  > ~/.kube/drill.config && chmod 600 ~/.kube/drill.config
+```
+
+That pinning is the safety rail, not a convenience: `$now`
+(`--force --grace-period 0`) is defined **only** in the drill shell, and force
+deletion against a real cluster skips graceful shutdown — on a StatefulSet it
+breaks the at-most-one-pod-per-identity guarantee and can corrupt a volume. A
+drill shell that cannot see a production context cannot make that mistake. The
+zsh side deliberately defines only `do` (as an array, per the splitting rule
+above) in the unmanaged `~/.config/zsh/local.zsh`, never `now`.
+
+Note the file is a point-in-time snapshot: recreate the lab cluster and its
+credentials rotate, so regenerate it.
+
+**Not in `MacBookPro.nix`** — lean work profile, and not a sync target per
+Modification Guidelines 7.
+
 ### Terraform (tfenv)
 
 Terraform goes through `pkgs.tfenv` in all three home configs rather than
