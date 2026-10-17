@@ -503,6 +503,115 @@ ls /etc/profiles/per-user/<user>/bin | grep kubectx
 A clean `nix build` proves nothing here; only activation puts the completions on
 `fpath`.
 
+## A nix-installed Python app can't see a `pip install`ed module
+
+### Symptom
+
+A tool's docs say to `pip install <module>`, you do, and the tool still
+behaves as though it isn't there. Hit with `ansible` and `netaddr` on
+`Andrews-MacBook-Pro-M3`, 17 Oct 2026, setting up the `k3s-ansible`
+playbooks in the `turingpi` repo — whose README says:
+
+> The control node **must** have Ansible 8.0+ (ansible-core 2.15+) and the
+> Python `netaddr` library (`pip install netaddr`), required by the
+> `ansible.utils.ipwrap` filter.
+
+The natural first move is to work out which Python is "the" Python —
+`/usr/bin/python3` is macOS's 3.9.6, and there's a Homebrew `python@3.11`
+as well. **That question is a dead end**, and chasing it is the actual
+trap. In this instance nothing needed fixing at all: the filter already
+worked.
+
+### What's actually happening
+
+`pkgs.ansible` is a `buildPythonApplication`. Its `bin/ansible` is a bash
+wrapper that only touches `$PATH`; the real entrypoint is the sibling
+`bin/.ansible-wrapped`, whose first lines hard-code the entire import path:
+
+```python
+#!/nix/store/fj9h…-python3-3.13.15/bin/python3.13
+import sys;import site;import functools;…
+functools.reduce(lambda k, p: site.addsitedir(p, k), [
+  '/nix/store/…-python3.13-ansible-core-2.21.1/lib/python3.13/site-packages',
+  '/nix/store/…-python3.13-ansible-13.7.0/lib/python3.13/site-packages',
+  '/nix/store/…-python3.13-netaddr-1.3.0/lib/python3.13/site-packages',
+  …], site._init_pathinfo());
+```
+
+Three consequences, and the first is the general rule:
+
+- **The interpreter is private and the path is closed.** Ansible runs on its
+  own nix Python 3.13.15, which is on nobody's `$PATH`. Whichever `python3`
+  you'd have found is irrelevant — so is whichever `pip3` goes with it.
+- **The wrapper exports `PYTHONNOUSERSITE`.** Even a `pip install --user`
+  against the *correct* interpreter would be ignored by design.
+- **netaddr was already there.** nixpkgs propagates it as an `ansible.utils`
+  dependency, so the `pip install` the README asks for was never needed.
+
+Collections are likewise already present. `pkgs.ansible` is the full
+**ansible 13.7.0** bundle, not bare ansible-core — note that
+`readlink -f $(which ansible)` lands in the *ansible-core* store path, which
+makes it look core-only. That's expected: the bundle ships collections and no
+executables, so the profile's `bin/ansible` is symlinked from the core
+derivation it propagates. All three of the `turingpi` repo's
+`collections/requirements.yml` entries ship in it:
+
+| Collection | Version |
+|---|---|
+| `ansible.posix` | 2.2.0 |
+| `ansible.utils` | 6.0.2 |
+| `community.general` | 12.6.1 |
+
+### Fix
+
+There was nothing to fix here, so the "fix" is the diagnosis that stops you
+inventing a problem. Read the real import path before touching anything:
+
+```bash
+head -3 "$(dirname "$(readlink -f "$(which ansible)")")/.ansible-wrapped"
+```
+
+That single line shows both the interpreter and every directory it will
+import from. Then confirm the module end-to-end rather than by proxy — a bare
+`python3 -c 'import netaddr'` tests the *wrong* interpreter and will mislead
+you:
+
+```bash
+cat > /tmp/ipwrap-check.yml <<'YAML'
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  tasks:
+    - debug:
+        msg: "{{ '2001:db8::1' | ansible.utils.ipwrap }}"
+YAML
+ansible-playbook -i localhost, /tmp/ipwrap-check.yml   # => [2001:db8::1]
+```
+
+If a module genuinely *is* missing, the declarative fix is
+`pkgs.ansible.overridePythonAttrs` to extend the propagated inputs — **not**
+adding `pkgs.python3Packages.<module>` to `home.packages`, which would be
+inert for exactly the reasons above.
+
+### Prevention
+
+**Don't run `ansible-galaxy collection install -r collections/requirements.yml`.**
+It writes to `~/.ansible/collections`, which takes precedence over the bundled
+copies — you'd silently run versions outside `flake.lock` while the nix ones
+sit unused. Keep that directory absent, and check it first if a collection
+version ever looks wrong:
+
+```bash
+ls -A ~/.ansible/collections 2>/dev/null || echo "(absent — good)"
+ansible-galaxy collection list    # paths should all be /nix/store/…
+```
+
+The same reasoning applies to every nix-installed Python application, not
+just ansible — `awscli2` and `opencode` have the same closed import path. The
+general signal is a tool whose documentation assumes it shares a
+system-wide `site-packages`. Under nix it never does.
+
 ## Adding new entries
 
 When you hit a failure mode that took non-obvious diagnosis and you

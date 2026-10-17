@@ -222,7 +222,7 @@ The following shell configuration is captured in `homeConfigurations/adbell.nix`
 
 - **`home.sessionPath`:** `~/.local/bin` (uv, and Go's `GOBIN` — see below)
 - **`shellAliases`:** `ic` (iCloud Drive), `ob` (Obsidian vault), `src` (local source tree)
-- **`initContent`:** NVM initialisation, `vm()` neovim config selector, `genpass()`, 1Password SSH-agent/biometric env, FluxCD `op://` refs, 1Password plugins source
+- **`initContent`:** NVM initialisation, `vm()` neovim config selector, `genpass()`, `kdrill()` exam shell, 1Password SSH-agent/biometric env, FluxCD and k3s `op://` refs, 1Password plugins source
 
 All three home configs end `initContent` with a **machine-local overlay** —
 a `lib.mkAfter` block that sources `~/.config/zsh/local.zsh` and
@@ -513,6 +513,38 @@ credentials rotate, so regenerate it.
 
 **Not in `MacBookPro.nix`** — lean work profile, and not a sync target per
 Modification Guidelines 7.
+
+### Ansible
+
+`pkgs.ansible` in `adbell.nix` and `tester.nix` is the **full ansible bundle**
+(13.7.0), not bare ansible-core, so `community.general`, `ansible.posix` and
+`ansible.utils` are all already present — as is the `netaddr` that
+`ansible.utils`' `ipaddr`/`ipwrap` filters need. Not in `MacBookPro.nix`
+(lean work profile, and the clusters it talks to are personal).
+
+Two things that look broken and aren't:
+
+- **`readlink -f $(which ansible)` lands in the *ansible-core* store path**,
+  which makes the install look core-only. Expected — the bundle ships
+  collections and no executables, so the profile symlinks `bin/ansible` from
+  the core derivation it propagates. Check
+  `ansible-galaxy collection list` for the truth.
+- **`pip install netaddr` has no effect**, and never needed doing. Ansible
+  runs on a private nix Python whose import path is hard-coded in
+  `bin/.ansible-wrapped`, with `PYTHONNOUSERSITE` exported. See the
+  Troubleshooting entry below — the general rule covers every nix-installed
+  Python application, not just this one.
+
+**Do not `ansible-galaxy collection install`.** Galaxy copies land in
+`~/.ansible/collections` and take precedence over the bundled ones, putting
+the versions you actually run outside `flake.lock`. Keep that directory
+absent. If a collection genuinely needs adding, extend the bundle in nix.
+
+`K3S_TOKEN` is exported in `initContent` as an `op://` reference, alongside
+the FluxCD ones, for the `k3s-ansible` playbooks in the `turingpi` repo. It
+is a *reference*, not the secret — safe in this public repo, but it only
+resolves under `op run`/`op inject`; a bare `ansible-playbook` receives the
+literal `op://...` string.
 
 ### Terraform (tfenv)
 
@@ -850,6 +882,31 @@ before home-manager links anything); (4) only then suspect the config.
 `/nix/store` symlinks fine. That mechanism was diagnosed here and did **not**
 apply; `recursive = true` is not needed anywhere. Full entry in
 `docs/troubleshooting.md`.
+
+### A nix-installed Python app can't see a `pip install`ed module
+
+**Symptom:** a tool's docs say `pip install <module>`, you do, and nothing
+changes. Hit with `ansible`/`netaddr` on the M3, 17 Oct 2026. The instinct is
+to work out which `python3` is "the" one (macOS 3.9.6? Homebrew 3.11?) —
+**that question is the trap**, and in that instance nothing was broken at all.
+
+**Diagnosis:** nix Python applications are `buildPythonApplication`s whose
+import path is hard-coded by `site.addsitedir()` in the real entrypoint, with
+`PYTHONNOUSERSITE` exported. The interpreter is private and on nobody's
+`$PATH`, so no `pip install` — `--user` or otherwise — can ever reach it.
+Read the path instead of guessing:
+
+```bash
+head -3 "$(dirname "$(readlink -f "$(which ansible)")")/.ansible-wrapped"
+```
+
+Verify end-to-end through the tool, not with `python3 -c 'import x'`, which
+tests the wrong interpreter and will mislead you.
+
+**Fix:** usually none — the module is already propagated. If one genuinely is
+missing, use `pkgs.ansible.overridePythonAttrs`; adding
+`pkgs.python3Packages.<module>` to `home.packages` is inert. Full entry, plus
+the `ansible-galaxy` precedence trap, in `docs/troubleshooting.md`.
 
 ### `kubectl` tab-completion does nothing
 

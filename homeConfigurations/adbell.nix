@@ -17,6 +17,12 @@ let
         username = lib.mkForce username;
         homeDirectory = lib.mkForce homeDirectory;
         packages = [
+          # The full ansible bundle (13.7.0), not just ansible-core — so
+          # community.general, ansible.posix and ansible.utils are already
+          # present, as is the netaddr that ansible.utils' ipaddr/ipwrap
+          # filters need. Do NOT `ansible-galaxy collection install`: galaxy
+          # copies in ~/.ansible/collections shadow these and sit outside
+          # flake.lock. See docs/troubleshooting.md.
           pkgs.ansible
           pkgs.awscli2
           pkgs.discord
@@ -244,6 +250,13 @@ let
               # FluxCD credentials (1Password references)
               export FLUXCD_TOKEN="op://Private/fgl2ajasfbzxslend4sqnowuui/token"
               export FLUXCD_USERNAME="op://Private/fgl2ajasfbzxslend4sqnowuui/username"
+
+              # k3s cluster token (1Password reference), for the k3s-ansible
+              # playbooks in the turingpi repo. Like FluxCD above this is a
+              # *reference*, not the secret, so it is safe in a public repo —
+              # but it only resolves under `op run`/`op inject`. A bare
+              # `ansible-playbook` gets the literal "op://..." string.
+              export K3S_TOKEN="op://Private/h4fqp43gqfc3nlhlvwdqgb3qsu/password"
 
               export NVM_DIR="$HOME/.nvm"
               [[ -e "''${HOMEBREW_PREFIX}/opt/nvm/nvm.sh" ]] && source "''${HOMEBREW_PREFIX}/opt/nvm/nvm.sh"
