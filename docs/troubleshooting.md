@@ -272,6 +272,121 @@ formula you declared once, removed from the config, and `cleanup =
 
 ---
 
+## `brew bundle` fails with "process has already locked" → activation halts
+
+### Symptom
+
+`darwin-rebuild switch` reaches the Homebrew step and dies with a lock error
+naming **its own command line**:
+
+```
+Error: jundot/omlx/omlx: A `brew install --adopt jundot/omlx/omlx homebrew/cask/idrive` process
+has already locked /opt/homebrew/Cellar/openssl@3.
+Please wait for it to finish or terminate it to continue.
+`brew bundle` failed! 1 Brewfile dependency failed to install
+```
+
+Same downstream consequence as the other two `brew bundle` entries above:
+home-manager runs *after* Homebrew in nix-darwin's activation, so repo edits
+appear "not applied" even though the build succeeded. Hit on
+`Andrews-MacBook-Pro-M3`, 18 Oct 2026.
+
+The message invites you to go hunting for a competing process. **There isn't
+one.** Read the command line in the error: it is the process you are running.
+Homebrew is deadlocking against itself.
+
+### What's actually happening
+
+One `brew upgrade` run locked the same formula twice. A dependency lands in
+both the *"upgrade these outdated dependencies"* set and the *"install
+dependencies"* set of a single invocation, and the second acquisition blocks
+on the first.
+
+What put `openssl@3` in both sets was an upstream formula reshuffle that the
+run's own `Auto-updating Homebrew...` step pulled in: Homebrew split
+`openssl@3.6` out into its own formula, so `openssl@3` **rolled backwards**
+to 3.5.9 while 3.6.5 was installed. That reads as `outdated` even though the
+installed version is numerically newer:
+
+```console
+$ brew outdated --formula --verbose
+openssl@3 (3.6.5) < 3.5.9          # the giveaway: installed > "available"
+```
+
+Two things follow, and both matter for diagnosis:
+
+- **The named formula is rarely the culprit.** `omlx` was simply the first
+  thing `brew bundle` reached; anything with `openssl@3` in its closure would
+  have deadlocked identically. `omlx`'s only *direct* dependency is
+  `python@3.11` — `openssl@3` arrives transitively.
+- **Failures compound.** Each aborted attempt died mid-pour, leaving debris
+  that causes *different* errors on retry: a nested
+  `Cellar/openssl@4/4.0.3/4.0.3` directory (`Error: openssl@4: File exists`)
+  and an orphaned `4.0.3.tmp` keg. Don't read those as new problems; they are
+  wreckage from the first one.
+
+### Fix
+
+Settle the closure one formula at a time, so no single `brew` process ever has
+to lock anything twice. Only then retry the package that was named:
+
+```bash
+brew outdated --formula --verbose        # find the installed > available rows
+brew upgrade openssl@3                   # each in its OWN process
+for f in openssl@4 libssh2 libgit2 pkgconf sqlite rust; do brew upgrade "$f"; done
+brew upgrade jundot/omlx/omlx            # now has nothing left to lock
+brew outdated --formula                  # must be empty before re-activating
+```
+
+Expect most of the loop to print `already installed` — earlier failed runs got
+through the dependency phase before dying, so the work is already done.
+
+Then re-run `sudo --set-home darwin-rebuild switch --flake .#<host>` and
+confirm a home-manager symlink actually flipped — the `/nix/store/…-home-manager-files/…`
+prefix should differ from before:
+
+```bash
+readlink ~/.zshrc
+```
+
+**Clearing the debris.** An orphaned `*.tmp` keg carries a valid
+`INSTALL_RECEIPT.json`, so Homebrew counts it as installed and `brew cleanup`
+will *not* remove it (the dry run prints nothing). Verify nothing links to it,
+then delete it directly:
+
+```bash
+K=/opt/homebrew/Cellar/openssl@4/4.0.3.tmp
+find /opt/homebrew/{opt,lib,bin,include} -maxdepth 1 -type l \
+  | xargs -I{} sh -c 'readlink "{}" | grep -q "4\.0\.3\.tmp" && echo "LINK: {}"'
+rm -rf "$K"        # only if the find printed nothing
+brew missing       # should be silent
+```
+
+### Prevention
+
+There is nothing to declare in this repo — the trigger is upstream formula
+churn, and `onActivation.autoUpdate`/`upgrade` means activation picks it up
+whenever Homebrew decides to reshuffle. What helps is **separating the two
+jobs**: when `brew update` reports a large batch of new formulae (especially
+a versioned split like `openssl@3.6`), run `brew upgrade` by hand *before*
+`darwin-rebuild switch`, so a lock failure costs you a brew run rather than a
+halted activation.
+
+The cheap pre-flight, and the one check worth making a habit:
+
+```bash
+brew update && brew outdated --formula --verbose
+```
+
+Any row where the installed version is **greater** than the available one is a
+formula rollback, and is the shape that causes this. Settle those individually
+first.
+
+Note the test VM will not catch this class of failure — it excludes `omlx`
+entirely (see the cleanup-mode note in `AGENTS.md`), and the trigger is
+whatever Homebrew happened to publish that day rather than anything in the
+flake. A green VM activation is not evidence here.
+
 ## A newly-wired agent appears to ignore its MCP servers and skills
 
 **Symptom:** a new agent is wired up, `darwin-rebuild switch` succeeds, the

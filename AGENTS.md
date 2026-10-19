@@ -865,6 +865,38 @@ Homebrew's own diagnostic commands (`brew uses`, `brew leaves`) currently 404 on
 
 **Prevention:** on `cleanup = "none"` machines, when removing a brew from `brews = [...]`, `brew uninstall <name>` on that machine in the same commit — otherwise the formula and its dep closure survive indefinitely. The test VM's `cleanup = "uninstall"` masks this class of failure, so don't treat a green VM activation as a signal.
 
+### `brew bundle` fails with "process has already locked" → activation halts
+
+**Symptom:** `darwin-rebuild switch` dies at the Homebrew step with a lock
+error naming **its own command line** — "A *<the very command you ran>*
+process has already locked /opt/homebrew/Cellar/openssl@3". Same as the two
+entries above — home-manager never runs, so repo edits look unapplied. Hit on
+`Andrews-MacBook-Pro-M3`, 18 Oct 2026.
+
+**Diagnosis:** there is no competing process; Homebrew deadlocked against
+itself. A dependency landed in both the "upgrade outdated deps" and "install
+deps" sets of one invocation. The cause was an upstream reshuffle pulled in by
+the run's own auto-update — `openssl@3.6` was split out, so `openssl@3` rolled
+*backwards* to 3.5.9 against 3.6.5 installed. The tell is a row in
+`brew outdated --formula --verbose` where installed is **greater** than
+available. The formula named in the error is rarely the culprit: `omlx` was
+just the first thing `brew bundle` reached.
+
+**Fix:** settle the closure one formula per `brew` process
+(`brew upgrade openssl@3`, then each remaining dep, then the named package),
+confirm `brew outdated` is empty, re-activate, and check `readlink ~/.zshrc`
+flipped. Expect `already installed` for most — failed runs complete the
+dependency phase before dying. Debris from aborted pours (a nested
+`4.0.3/4.0.3` dir, an orphaned `*.tmp` keg) throws *different* errors on
+retry; it's wreckage, not a new fault. `brew cleanup` won't remove a `.tmp`
+keg — it has a valid receipt — so check for inbound symlinks and `rm -rf` it.
+
+**Prevention:** run `brew update && brew outdated --formula --verbose` by hand
+before a switch when Homebrew has churned, so a lock failure costs a brew run
+rather than a halted activation. The test VM can't catch this — it excludes
+`omlx` and the trigger is upstream, not in the flake. Full entry in
+`docs/troubleshooting.md`.
+
 ### A newly-wired agent appears to ignore its MCP servers and skills
 
 **Symptom:** agent wired, switch succeeded, files present and readable — agent
