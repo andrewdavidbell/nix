@@ -387,6 +387,27 @@ entirely (see the cleanup-mode note in `AGENTS.md`), and the trigger is
 whatever Homebrew happened to publish that day rather than anything in the
 flake. A green VM activation is not evidence here.
 
+**`brew pin` does hold against activation** — verified 20 Oct 2026, because
+"will nix-darwin just re-upgrade it?" is the obvious doubt. nix-darwin runs a
+plain `brew bundle --file=<store Brewfile>` with no upgrade flag, and
+Homebrew's bundle layer subtracts pins before deciding what to touch:
+
+```ruby
+# Library/Homebrew/bundle/brew.rb
+def upgradable_formulae = outdated_formulae - pinned_formulae
+```
+
+Casks are handled equivalently in `bundle/cask.rb` (`casks.reject(&:pinned?)`).
+So `brew pin <formula>` is a legitimate way to hold a package across
+activations — useful to park something that keeps failing, without editing the
+darwin config and rebuilding.
+
+Two caveats. A pin is **machine-local and invisible to this repo**, so the
+declared config and what is installed silently diverge — if a brew looks
+frozen at the wrong version, check `brew list --pinned` before suspecting the
+flake. And a pin suppresses security updates for as long as it is set, so
+treat it as a dated workaround and record why.
+
 ## A newly-wired agent appears to ignore its MCP servers and skills
 
 **Symptom:** a new agent is wired up, `darwin-rebuild switch` succeeds, the
