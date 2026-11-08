@@ -748,6 +748,172 @@ just ansible — `awscli2` and `opencode` have the same closed import path. The
 general signal is a tool whose documentation assumes it shares a
 system-wide `site-packages`. Under nix it never does.
 
+## Claude Code fails with "SSL certificate verification failed" after a flake update
+
+### Symptom
+
+Every Claude Code session dies immediately on the first request:
+
+```
+API Error: Unable to connect to API: SSL certificate verification failed. Check your proxy or corporate SSL certificates
+```
+
+Hit on `Andrews-MacBook-Pro-M3`, 8 Nov 2026, after `nix flake update` +
+`darwin-rebuild switch`. `git restore flake.lock` and a second switch
+appeared to fix it.
+
+**That conclusion was wrong, and it is an expensive one to hold** — it
+implies the lockfile can never be updated again. The revert cost a ~20
+minute rebuild and changed nothing that could affect TLS. The cause was
+never identified; the timing was coincidental. Everything below is the
+evidence that rules this repo out, so the next occurrence isn't
+misattributed the same way.
+
+### What's actually happening
+
+Not the trust store. **Claude Code's CA roots are compiled into its Bun
+binary** and are immune to every certificate variable nix sets:
+
+```bash
+CLAUDE=/etc/profiles/per-user/adbell/bin/claude
+# all three print PONG — the env vars are simply ignored
+NIX_SSL_CERT_FILE=/dev/null $CLAUDE -p 'reply with exactly: PONG'
+SSL_CERT_FILE=/dev/null     $CLAUDE -p 'reply with exactly: PONG'
+```
+
+`NIX_SSL_CERT_FILE` is set on this machine (by the Nix *installer*'s
+`/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh`, not by
+nix-darwin — which is why it won't show up when grepping a generation's
+`/etc`). Claude ignores it anyway. `NODE_EXTRA_CA_CERTS` *is* read, but
+it is **additive** — pointed at garbage it warns and still connects:
+
+```
+warn: ignoring extra certs from /dev/null, load failed: error:10000009:SSL routines:…
+```
+
+So no nixpkgs `cacert`/`nss-cacert` bump can ever produce this error. In
+this incident the lockfile did move `nss-cacert` 3.126 → 3.131.1, which
+looks damning until you read the diff: it removes three eMudhra roots and
+adds nothing. `api.anthropic.com` chains to **Google Trust Services WE1 →
+GTS Root R4**, present in both, and both bundles validate it at
+`ssl_verify=0`.
+
+Not the package either. The two generations' Claude binaries were
+**byte-identical**:
+
+| | gen 93 (updated, broke) | gen 94 (reverted, worked) |
+|---|---|---|
+| `darwin-system` | `26.05.d31953c` | `26.05.c3e90c8` |
+| `.claude-wrapped` SHA-256 | `fcbe0b8d4757…` | `fcbe0b8d4757…` |
+| version in transcripts | 2.1.223 | 2.1.223 |
+| `settings.json` | identical content | identical content |
+| plugin dir | identical content | identical content |
+
+And not store-path churn. A flake update gives every rebuilt package a new
+`/nix/store` path, which is a plausible trigger for anything keying on
+executable path — a Little Snitch rule, for instance. It wasn't that here:
+`op` is also a nix binary, its path *also* changed in gen 93
+(`j5bccqgg…` → `n7di7gg6…`), and `op read "op://…"` succeeded during the
+failure window. Little Snitch also turned out to hold **no rules
+referencing any `/nix/store` path at all**, and being a connection
+firewall rather than a TLS-inspecting proxy it cannot make a certificate
+fail validation — only make a connection fail.
+
+Also checked and clear: no MITM root CA in the System or login keychain,
+no system proxy (`scutil --proxy` empty), no `ANTHROPIC_BASE_URL`
+override, and no certificate or proxy variable in either generation's
+`/etc`, `.zshenv`, `.zshrc`, `hm-session-vars.sh`, or the machine-local
+`~/.config/zsh/{local,secrets}.zsh` overlays.
+
+What remains is a genuine certificate rejection that nothing in the
+machine's *configured* state explains — most likely transient and
+endpoint-specific, which fits `op` reaching 1Password fine while Claude
+could not reach `api.anthropic.com`.
+
+### Fix
+
+There is nothing to fix in this repo, so the fix is the diagnosis that
+stops you reverting the lockfile. Run this **while it is failing** — it
+names an interceptor directly:
+
+```bash
+echo | openssl s_client -connect api.anthropic.com:443 \
+  -servername api.anthropic.com 2>/dev/null \
+  | grep -E '^ *[0-9] [si]:|Verify return'
+```
+
+Healthy output is exactly:
+
+```
+ 0 s:CN=api.anthropic.com
+ 1 s:C=US, O=Google Trust Services, CN=WE1
+ 2 s:C=US, O=Google Trust Services LLC, CN=GTS Root R4
+Verify return code: 0 (ok)
+```
+
+Any other issuer is something intercepting TLS, and the subject line says
+what. Also capture `env | grep -i proxy` and `claude --debug` at the time —
+both are gone once the window closes, which is why this incident stayed
+unexplained.
+
+### Prevention
+
+**Don't revert `flake.lock` as a first move.** Confirm the update actually
+changed the thing you suspect first. The generation forensics below are
+reusable for any "the flake update broke X" claim, and both old generations
+remain on disk until garbage collection.
+
+Find the generations and what moved between them:
+
+```bash
+ls -lt /nix/var/nix/profiles/system-*-link | head        # dates + darwin-system rev
+nix store diff-closures /nix/var/nix/profiles/system-94-link \
+                        /nix/var/nix/profiles/system-93-link
+```
+
+`diff-closures` reports only version *changes*, so a package it omits is
+identical. To compare a specific binary, resolve it in each generation and
+hash it — same version can still mean a rebuild, and a matching hash ends
+the argument:
+
+```bash
+for g in 94 93; do
+  nix-store -qR /nix/var/nix/profiles/system-$g-link | grep 'claude-code-[0-9]'
+done
+shasum -a 256 /nix/store/<gen94>-claude-code-*/bin/claude \
+              /nix/store/<gen93>-claude-code-*/bin/claude
+```
+
+User-facing config lives in `home-manager-files`; diff the whole tree
+rather than guessing which file matters:
+
+```bash
+diff -rq /nix/store/<a>-home-manager-files /nix/store/<b>-home-manager-files
+```
+
+Date the failure window from Claude's own transcripts — **timestamps are
+UTC**, so add 11 hours for AEDT. A failed request records model
+`<synthetic>`, Claude's marker for a locally generated error that never
+reached the API, which distinguishes "could not connect" from "the model
+replied badly":
+
+```bash
+grep -l 'SSL certificate verification failed' ~/.claude/projects/*/*.jsonl
+```
+
+Note `darwin-rebuild switch` also runs `brew bundle` with
+`onActivation.upgrade = true`, so an activation changes things *outside*
+the nix store that a lockfile revert will **not** undo. Here it upgraded
+`ca-certificates`, `openssl@4`, `docker-desktop` and others at 15:21–15:24,
+minutes after the switch — worth checking, and worth remembering that a
+revert is not a rollback of it:
+
+```bash
+for d in /opt/homebrew/Caskroom/* /opt/homebrew/Cellar/*; do
+  echo "$(stat -f '%Sm' -t '%Y-%m-%d %H:%M' "$d")  $(basename "$d")"
+done | sort | tail -20
+```
+
 ## Adding new entries
 
 When you hit a failure mode that took non-obvious diagnosis and you

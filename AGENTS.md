@@ -989,6 +989,44 @@ name oh-my-posh and Powerlevel10k as the culprits.
 how to undo that hack if an agent has already applied it, in
 `docs/troubleshooting.md`.
 
+### Claude Code fails with "SSL certificate verification failed" after a flake update
+
+**Symptom:** every Claude Code session dies on the first request with
+`API Error: Unable to connect to API: SSL certificate verification failed. Check
+your proxy or corporate SSL certificates`. Hit on `Andrews-MacBook-Pro-M3`,
+8 Nov 2026, right after `nix flake update` + switch; reverting `flake.lock`
+appeared to fix it.
+
+**The revert was not the fix, and believing it was freezes the lockfile
+permanently.** The cause was never identified and the timing was coincidental.
+This repo is ruled out on tested evidence, not inference:
+
+- **Claude's CA roots are compiled into its Bun binary.** It connects fine with
+  `NIX_SSL_CERT_FILE=/dev/null` *and* `SSL_CERT_FILE=/dev/null` — both are
+  ignored. `NODE_EXTRA_CA_CERTS` is read but only *additive*. So **no nixpkgs
+  `cacert`/`nss-cacert` change can ever cause this**, including the
+  3.126 → 3.131.1 bump in that lockfile (it removed three eMudhra roots and
+  nothing else; Anthropic chains to GTS Root R4, present in both).
+- **The binaries were byte-identical** across the two generations (same
+  SHA-256), same version 2.1.223, with identical `settings.json` and plugin dir.
+- **Not store-path churn** (the plausible trigger for anything keying on
+  executable path): `op` is also a nix binary, its path also changed, and it
+  made successful TLS calls during the failure window. Little Snitch holds no
+  rules referencing any `/nix/store` path, and as a connection firewall it
+  cannot fail a certificate anyway.
+
+**Do not revert `flake.lock` for this.** Diagnose *while it fails* —
+`echo | openssl s_client -connect api.anthropic.com:443 -servername api.anthropic.com`
+should show `GTS WE1` → `GTS Root R4` and `Verify return code: 0`; any other
+issuer names the interceptor. Note a failed request records model `<synthetic>`
+in `~/.claude/projects/*/*.jsonl` (transcript timestamps are UTC).
+
+Also remember `darwin-rebuild switch` runs `brew bundle` with
+`onActivation.upgrade = true`, so an activation changes things **outside** the
+nix store that a lockfile revert does not undo. Full entry, including the
+reusable generation-forensics recipe for any "the flake update broke X" claim,
+in `docs/troubleshooting.md`.
+
 ## Important Constraints
 
 - **Architecture:** All configurations target `aarch64-darwin` (Apple Silicon Macs)
