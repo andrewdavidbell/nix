@@ -990,9 +990,41 @@ Then on each machine:
 
 ```bash
 sudo --set-home darwin-rebuild switch --flake .#<host>
-rm -rf ~/.local/share/nvim/lazy/project.nvim   # with nvim closed
-nvim                                            # lazy installs the fork
+nvim -c 'Lazy update project.nvim'   # moves off the locked commit
+# restart nvim
 ```
+
+**`:Lazy update` is the operative step, not deleting the plugin directory.**
+Changing the repo in the spec is *not* enough, and neither is `rm -rf`-ing the
+checkout, because `~/.config/nvim/lazy-lock.json` pins an exact commit:
+
+```jsonc
+"project.nvim": { "branch": "main", "commit": "8c6bad7d…" },   // ahmedkhalf, Apr 2023
+```
+
+The failure this produces is deliberately confusing:
+
+```
+Failed to run `config` for project.nvim
+…/lazy/lazy.nvim/lua/lazy/core/loader.lua:387: module 'project' not found
+```
+
+lazy.nvim *does* re-point `origin` on a URL change (verify with
+`git -C ~/.local/share/nvim/lazy/project.nvim remote get-url origin`) — but it
+then checks out the locked commit, and **because the fork shares ahmedkhalf's
+history that commit resolves against the new remote**, so there is no fetch
+error. You end up on the fork's remote at pre-fork code: `lua/` holds
+`project_nvim/`, there is no `lua/project/`, and `main = "project"` cannot
+resolve. Confirm with:
+
+```bash
+git -C ~/.local/share/nvim/lazy/project.nvim log -1 --format='%h %ad' --date=short
+ls ~/.local/share/nvim/lazy/project.nvim/lua
+```
+
+A commit date predating the fork with `project_nvim` in `lua/` is this exact
+state. `rm -rf` + restart reproduces it, since a fresh clone is checked back to
+the locked commit.
 
 Three things worth knowing about that fork choice:
 
@@ -1008,10 +1040,10 @@ Three things worth knowing about that fork choice:
   `project_nvim` → `project`; setting it explicitly beats relying on
   lazy.nvim's derivation of a main module from the plugin name.
 
-The `rm -rf` is deliberate rather than `:Lazy sync`: both repos check out to the
-same `project.nvim` directory name, so a sync asks lazy.nvim to re-point an
-existing git remote. Deleting is deterministic, and the shared name means no
-stale directory is left behind either way.
+Both repos also check out to the same `project.nvim` directory name, so no
+stale directory is left behind by the swap — the shared name is why lazy.nvim
+treats this as one plugin changing remotes rather than a removal plus an
+install, and is half of why the lockfile pin goes unnoticed.
 
 Defaults confirmed equivalent to the old bare `setup {}` — `manual_mode = false`,
 `scope_chdir = "global"`, `lsp.enabled = true` — so cwd still follows the project
@@ -1023,12 +1055,24 @@ only for session management, which nothing here uses), and the old
 ### Prevention
 
 **Grep `~/.local/share/nvim/lazy/` before `nvim/`.** Neovim plugins here are
-lazy.nvim's, not nix's — there is no `lazy-lock.json` in this repo (see the
-comment in both home configs) and `config/lazy.lua` sets
-`checker = { enabled = true }`. So plugin versions sit **outside `flake.lock`**
-and drift independently per machine. A switch cannot fix a plugin, and a machine
-reporting a plugin problem another machine doesn't have is expected, not
-evidence of a per-host config difference.
+lazy.nvim's, not nix's. A switch cannot fix a plugin, and a machine reporting a
+plugin problem another machine doesn't have is expected, not evidence of a
+per-host config difference.
+
+**Know where the versions actually live.** This repo manages no
+`lazy-lock.json` (see the comment in all three home configs), but lazy.nvim
+writes one at `~/.config/nvim/lazy-lock.json` regardless, and it is
+authoritative. So plugin versions are **pinned per machine, outside
+`flake.lock`, by an unmanaged file** — which is the worst of both worlds to
+debug: editing the spec in this repo changes the *remote* on the next start but
+not the *commit*, and `checker = { enabled = true }` only reports that updates
+exist, it does not apply them. Any spec change that must land as new code needs
+`:Lazy update <plugin>` on each machine. Read the lock before concluding a
+plugin is current:
+
+```bash
+grep '"<plugin>"' ~/.config/nvim/lazy-lock.json
+```
 
 The corollary: a deprecation warning dates the plugin. `vim.deprecate`'s third
 argument gives you the removal version, so compare it against

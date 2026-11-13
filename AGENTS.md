@@ -1042,9 +1042,10 @@ on LSP attach, so it fires on the first buffer with a language server and then
 goes quiet.
 
 **Diagnosis: grep the plugin directory, not this repo.** Neovim plugins here are
-lazy.nvim's, not nix's — no `lazy-lock.json` is managed and
-`nvim/lua/config/lazy.lua` sets `checker = { enabled = true }`, so plugin
-versions sit **outside `flake.lock`** and drift per machine.
+lazy.nvim's, not nix's. This repo manages no `lazy-lock.json`, but lazy.nvim
+writes one at `~/.config/nvim/lazy-lock.json` and it is authoritative — so
+plugin versions are pinned **per machine by an unmanaged file, outside
+`flake.lock`**.
 
 ```bash
 grep -rn "buf_get_clients" ~/.local/share/nvim*/lazy/ | grep -v '/doc/'
@@ -1058,9 +1059,15 @@ runtime shim's third argument is a **deadline**: `vim.deprecate(old, new,
 
 **Fix:** moved to the maintained fork `DrKJeff16/project.nvim` with
 `main = "project"` (it renames the module `project_nvim` → `project`), then
-`rm -rf ~/.local/share/nvim/lazy/project.nvim` with nvim closed and restart —
-both repos use the same checkout directory name, so deleting beats asking
-`:Lazy sync` to re-point a remote.
+**`:Lazy update project.nvim` per machine** and restart.
+
+**The spec change alone is not enough, and `rm -rf` of the checkout does not
+help** — `lazy-lock.json` pins the commit. lazy.nvim re-points `origin` but
+checks out the locked commit, and since the fork shares ahmedkhalf's history
+that commit resolves against the new remote with no error, leaving the fork's
+remote at pre-fork code: `lua/project_nvim/` present, `lua/project/` absent,
+so `config` fails with `module 'project' not found`. Any spec change that must
+land as new code needs `:Lazy update`.
 
 **Do not** adopt `coffebar/project.nvim`, the commonly-suggested fork: stale
 since Sep 2023 and carrying the identical bug. Verify a fork fixed the actual
