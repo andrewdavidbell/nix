@@ -875,7 +875,10 @@ Homebrew's own diagnostic commands (`brew uses`, `brew leaves`) currently 404 on
 error naming **its own command line** — "A *<the very command you ran>*
 process has already locked /opt/homebrew/Cellar/openssl@3". Same as the two
 entries above — home-manager never runs, so repo edits look unapplied. Hit on
-`Andrews-MacBook-Pro-M3`, 18 Oct 2026.
+`Andrews-MacBook-Pro-M3` 18 Oct 2026, then `MacBookPro` 13 Nov 2026 — same
+`openssl@3 3.6.5 -> 3.5.9` rollback, while the M3 was already settled. So it is
+upstream churn each machine meets on its own next activation, not one machine's
+local mess; fixing one does nothing for the others.
 
 **Diagnosis:** there is no competing process; Homebrew deadlocked against
 itself. A dependency landed in both the "upgrade outdated deps" and "install
@@ -895,10 +898,21 @@ dependency phase before dying. Debris from aborted pours (a nested
 retry; it's wreckage, not a new fault. `brew cleanup` won't remove a `.tmp`
 keg — it has a valid receipt — so check for inbound symlinks and `rm -rf` it.
 
+**Two red herrings in the 13 Nov output.** A tap-trust warning
+("The following taps are not trusted: `anomalyco/tap`") prints mid-omlx-upgrade
+and is unrelated — the omlx lines name `jundot/omlx`, declared `trusted = true`,
+and `brew trust` fixes no deadlock. It *is* a separate real finding: that tap is
+undeclared in this repo (`mutableTaps` defaults to `true`, `tap` lines are
+additive, `cleanup = "none"`), so untap it or declare it. Also **do not answer
+`y`** to `brew upgrade`'s "Would upgrade 11 dependencies… proceed?" prompt — one
+process for all eleven is exactly the deadlock condition.
+
 **Prevention:** run `brew update && brew outdated --formula --verbose` by hand
 before a switch when Homebrew has churned, so a lock failure costs a brew run
-rather than a halted activation. The test VM can't catch this — it excludes
-`omlx` and the trigger is upstream, not in the flake. Full entry in
+rather than a halted activation — **per machine**. The test VM can't catch this
+(it excludes `omlx`, and the trigger is upstream, not in the flake), and after
+13 Nov neither can a green activation on the other production machine. A machine
+already past it is a useful oracle for the target versions. Full entry in
 `docs/troubleshooting.md`.
 
 ### A newly-wired agent appears to ignore its MCP servers and skills

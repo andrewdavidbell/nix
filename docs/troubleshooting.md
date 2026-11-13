@@ -289,7 +289,9 @@ Please wait for it to finish or terminate it to continue.
 Same downstream consequence as the other two `brew bundle` entries above:
 home-manager runs *after* Homebrew in nix-darwin's activation, so repo edits
 appear "not applied" even though the build succeeded. Hit on
-`Andrews-MacBook-Pro-M3`, 18 Oct 2026.
+`Andrews-MacBook-Pro-M3` 18 Oct 2026, then on `MacBookPro` 13 Nov 2026 — see
+**Recurrence** below, which is the evidence that this is upstream churn
+arriving per machine rather than one machine's local mess.
 
 The message invites you to go hunting for a competing process. **There isn't
 one.** Read the command line in the error: it is the process you are running.
@@ -324,6 +326,84 @@ Two things follow, and both matter for diagnosis:
   `Cellar/openssl@4/4.0.3/4.0.3` directory (`Error: openssl@4: File exists`)
   and an orphaned `4.0.3.tmp` keg. Don't read those as new problems; they are
   wreckage from the first one.
+
+### Recurrence: `MacBookPro`, 13 Nov 2026
+
+The same fault, a month later, on the other production machine. Worth recording
+because the first occurrence left it ambiguous whether this was an M3-local
+mess; it wasn't.
+
+Identical mechanism, identical tell — `brew upgrade omlx` listed:
+
+```
+openssl@4    4.1.0              # new formula, nothing installed
+openssl@3    3.6.5    -> 3.5.9  # installed > "available": the rollback
+```
+
+Only the surrounding versions had moved on (`omlx 0.7.0 -> 0.8.0rc1`,
+`openssl@4` at 4.1.0 rather than 4.0.3). `omlx` was again the named package and
+again not the cause.
+
+The decisive bit of context: the M3 was **already settled** at the time —
+`brew outdated --formula --verbose` empty, `openssl@3` at 3.5.9, `openssl@4` at
+4.1.0, `omlx` at 0.8.0rc1. So the trigger is Homebrew's published state, and
+each machine meets it independently whenever that machine next activates. Two
+consequences:
+
+- **Fixing one machine does nothing for the others.** Expect this once per
+  machine, spread over however long the activations are spread over.
+- **A settled machine is a useful oracle.** Before touching the broken one,
+  read the target version set off a machine that has already been through it
+  (`brew list --versions openssl@3 openssl@4 python@3.11 …`) — that tells you
+  what "finished" looks like, which `brew outdated` on the broken machine
+  cannot.
+
+#### Red herring: the tap-trust warning
+
+The failing output interleaves an unrelated Homebrew tap-trust block, printed
+in the middle of the omlx upgrade:
+
+```
+Warning: The following taps are not trusted:
+  anomalyco/tap
+Homebrew is currently ignoring formulae, casks and commands
+from these taps because tap trust is required.
+```
+
+This has **nothing to do with the failure** and it is not about `omlx`. The
+omlx lines in the same output name `jundot/omlx` and `jundot/omlx/omlx`
+throughout, and that tap is declared with `trusted = true` in
+`darwinConfigurations/MacBookPro.nix`, so it is unaffected. Adjacency in the
+log is the only connection; `brew trust` will not fix a lock deadlock.
+
+It is, separately, a real finding — just a different one. `anomalyco/tap` is
+tapped on `MacBookPro` and declared nowhere in this repo (`brew tap` on the M3
+lists only `jundot/omlx`). That is the expected drift shape here:
+`nix-homebrew` is configured in `darwinModules/nix-homebrew.nix` without
+`mutableTaps`, so it defaults to `true`, and nix-darwin's `tap` lines are
+additive — a hand-added tap is never pruned, and `cleanup = "none"` on this
+host means nothing else removes it either. Resolve it on its own merits:
+`brew untap anomalyco/tap` if nothing needs it, or add it to the host's
+`homebrew.taps` with `trusted = true` so the trust decision lives in git rather
+than in a local `brew trust` side-effect. Note an undeclared tap's formulae are
+currently *ignored*, not merely unverified, so anything installed from one has
+silently stopped being managed.
+
+#### Don't accept `brew upgrade`'s interactive prompt
+
+Running `brew upgrade omlx` by hand after the failure prompts:
+
+```
+==> Would upgrade 11 dependencies:
+…
+==> Do you want to proceed with the upgrade? [y/n]
+```
+
+Answering `y` hands all eleven formulae to a **single** `brew` process, which is
+precisely the condition that deadlocks. Decline it and use the per-formula loop
+in **Fix** below instead. (`brew update <formula>` is also not a command —
+Homebrew warns and silently runs `brew upgrade` instead, landing you on this
+same prompt.)
 
 ### Fix
 
@@ -385,7 +465,10 @@ first.
 Note the test VM will not catch this class of failure — it excludes `omlx`
 entirely (see the cleanup-mode note in `AGENTS.md`), and the trigger is
 whatever Homebrew happened to publish that day rather than anything in the
-flake. A green VM activation is not evidence here.
+flake. A green VM activation is not evidence here — and after the 13 Nov 2026
+recurrence, neither is a green activation on the *other production machine*:
+the two met the same upstream reshuffle four weeks apart. The pre-flight above
+has to be run per machine.
 
 **`brew pin` does hold against activation** — verified 20 Oct 2026, because
 "will nix-darwin just re-upgrade it?" is the obvious doubt. nix-darwin runs a
