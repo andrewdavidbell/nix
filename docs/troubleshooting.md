@@ -1086,6 +1086,109 @@ To sweep the whole plugin set rather than chase one warning:
 nvim -c 'checkhealth vim.deprecated'
 ```
 
+---
+
+## showkeys crashes with "Invalid 'win': Expected Lua number"
+
+### Symptom
+
+```
+vim.schedule callback: ...lazy/showkeys/lua/showkeys/utils.lua:58: Invalid 'win': Expected Lua number
+stack traceback:
+        [C]: in function 'nvim_win_set_config'
+        ...utils.lua:58: in function 'update_win_w'
+        ...utils.lua:77: in function 'redraw'
+        ...utils.lua:83: in function 'fn'
+```
+
+Surfaced alongside an unrelated project.nvim failure on 13 Nov 2026, which is
+the trap — **the two are independent**. A traceback naming
+`[C]: in function '<api call>'` under `vim.schedule callback` is a plugin
+calling an API with bad state, not a config error, and nothing in this repo
+appears in the stack.
+
+### What's actually happening
+
+**Not stale code — an unfixed upstream bug.** Check this before anything else,
+because the usual plugin instinct (update it) cannot work here:
+
+```bash
+git -C ~/.local/share/nvim/lazy/showkeys log -1 --format='%h %ad' --date=short
+curl -s https://api.github.com/repos/nvzone/showkeys/commits/main | grep -m1 '"sha"'
+```
+
+Both are `cb0a502` (24 May 2025). The installed copy *is* upstream `main`.
+
+`init.lua:28` rearms a one-shot timer on every keypress:
+
+```lua
+state.timer:start(state.config.timeout * 1000, 0, vim.schedule_wrap(utils.clear_and_close))
+```
+
+`clear_and_close` (`utils.lua:81`) then calls `redraw()` → `update_win_w()` →
+`nvim_win_set_config(state.win, …)` **before** checking `state.win`, and nils
+`state.win` itself two lines later. The callback is `schedule_wrap`'d, so
+`timer:stop()` cancels future firings but **not one already queued on the
+scheduler** — whenever something nils `state.win` first (a second queued
+callback, or the `WinClosed`/`TabEnter` autocmds calling `M.close()`), the
+queued one reaches the API with nil. Upstream knows the guard is needed:
+`parse_key:92` wraps the same call in `if state.win then`; `clear_and_close`
+just lacks it.
+
+Why this repo sees it when most users don't: `nvim/lua/config/lazy.lua` ends
+with `vim.cmd("ShowkeysToggle")`, so showkeys is armed from the first keypress
+of every session rather than only when deliberately switched on.
+
+### Fix
+
+`nvim/lua/plugins/showkeys.lua` wraps `clear_and_close` with upstream's own
+guard, in a `config` function. Two mechanics make it work:
+
+- **Wrap the module table field, not a captured local.** `init.lua` reads
+  `utils.clear_and_close` *inside* the `on_key` closure, so the field is
+  resolved per keypress and picks up the replacement.
+- **`config` means `setup()` becomes ours to call.** lazy.nvim only calls
+  `require(<main>).setup(opts)` implicitly when `opts` is given *without* a
+  `config` function. Adding `config` and forgetting `setup` silently drops
+  `maxkey`.
+
+Verify a guard like this against the real plugin rather than by inspection —
+three assertions, the first of which proves the test can fail:
+
+```bash
+nvim --headless -n -u NONE -c 'lua
+  vim.opt.rtp:prepend(vim.fn.expand("~/.local/share/nvim/lazy/showkeys"))
+  local state, utils = require("showkeys.state"), require("showkeys.utils")
+  state.win = nil
+  print("unguarded:", pcall(utils.clear_and_close))          -- false (reproduces)
+  local inner = utils.clear_and_close
+  utils.clear_and_close = function() if state.win then inner() end end
+  print("guarded:  ", pcall(utils.clear_and_close))          -- true
+  state.buf, state.ns = vim.api.nvim_create_buf(false, true), vim.api.nvim_create_namespace("t")
+  utils.gen_winconfig()
+  state.win = vim.api.nvim_open_win(state.buf, false, state.config.winopts)
+  print("live win: ", pcall(utils.clear_and_close), not vim.api.nvim_win_is_valid(state.win))
+' -c 'qa!'
+```
+
+The third assertion is the one that matters: a guard that also stops the window
+ever closing would look like a fix and be a leak.
+
+### Prevention
+
+**Establish "stale or broken?" before reaching for `:Lazy update`.** Compare
+the local HEAD against upstream's default branch first — the two call for
+opposite responses, and this repo contains one of each: project.nvim was stale
+(fix: move forward), showkeys is current (fix: work around). An update attempt
+on a current plugin wastes the diagnosis and can look like it helped.
+
+**Prefer wrapping to patching the checkout.** `~/.local/share/nvim/lazy/` is
+lazy.nvim's working tree; an edit there is reverted by the next update and is
+invisible to this repo and to the other machines. A wrapper in the plugin spec
+is declarative, nix-managed, applies everywhere, and composes if upstream
+later adds the guard itself — at the cost of depending on the plugin's
+internals, so leave the upstream line numbers in a comment for whoever revisits.
+
 ## Adding new entries
 
 When you hit a failure mode that took non-obvious diagnosis and you

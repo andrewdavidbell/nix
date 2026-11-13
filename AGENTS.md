@@ -1075,6 +1075,33 @@ line (`curl` + `grep` against raw.githubusercontent.com) before switching.
 Sweep the whole plugin set with `nvim -c 'checkhealth vim.deprecated'`, ideally
 at nvim minor bumps. Full entry in `docs/troubleshooting.md`.
 
+### showkeys crashes with "Invalid 'win': Expected Lua number"
+
+**Symptom:** `vim.schedule callback: …/lazy/showkeys/lua/showkeys/utils.lua:58:
+Invalid 'win': Expected Lua number`, under `nvim_win_set_config`. Hit on
+`MacBookPro`, 13 Nov 2026, at the same time as the project.nvim failure above —
+**the two are unrelated**, and nothing in this repo appears in the stack.
+
+**Diagnosis: current, not stale — so `:Lazy update` cannot fix it.** The
+installed copy is byte-identical to `nvzone/showkeys` main (`cb0a502`, May
+2025). `clear_and_close` (`utils.lua:81`) calls `redraw()` →
+`nvim_win_set_config(state.win, …)` *before* checking `state.win`, and the
+timer callback is `schedule_wrap`'d — so `timer:stop()` cannot cancel one
+already queued, and any path that nils `state.win` first makes the queued call
+pass nil. `config/lazy.lua`'s startup `ShowkeysToggle` is why this repo sees it.
+
+**Fix:** `nvim/lua/plugins/showkeys.lua` wraps `clear_and_close` with the guard
+upstream already uses in `parse_key()`. Wrap the **module table field** (
+`init.lua` resolves it per keypress, so a captured local would be bypassed),
+and remember that adding `config` makes `setup()` yours to call — lazy.nvim
+only invokes it implicitly for `opts` *without* `config`.
+
+**Always ask "stale or broken?" before `:Lazy update`** — compare local HEAD to
+upstream's default branch. The two cases need opposite fixes and this repo has
+one of each. Don't patch `~/.local/share/nvim/lazy/` directly; it is reverted
+by the next update and invisible to the other machines. Full entry in
+`docs/troubleshooting.md`.
+
 ## Important Constraints
 
 - **Architecture:** All configurations target `aarch64-darwin` (Apple Silicon Macs)
