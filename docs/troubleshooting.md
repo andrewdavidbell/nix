@@ -914,6 +914,134 @@ for d in /opt/homebrew/Caskroom/* /opt/homebrew/Cellar/*; do
 done | sort | tail -20
 ```
 
+---
+
+## Neovim warns that a `vim.lsp.*` function is deprecated
+
+### Symptom
+
+Opening a file in `nvim` occasionally prints:
+
+```
+vim.lsp.buf_get_clients() is deprecated. Run ":checkhealth vim.deprecated" for more information
+```
+
+Noticed on `MacBookPro`, 13 Nov 2026, but **not machine-specific** — `nvim/lua`
+is rendered from this repo into all three configs, so every machine has it.
+
+The "occasionally" is the most misleading part, and it is the clue. `vim.deprecate`
+warns **once per session**, and the call site only runs on LSP attach — so it
+appears on the first buffer with a language server (`bashls`, `lua_ls`,
+`marksman`, `ruff`) and stays silent for the rest of that session. It looks
+intermittent; it is deterministic.
+
+### What's actually happening
+
+**The call is not in this repo.** Nothing under `nvim/` ever called it:
+
+```bash
+grep -rn "buf_get_clients\|get_active_clients" nvim/ nvim-kickstart/ nvim-lazynvim/ nvim-nvchad/
+# no matches
+```
+
+It was in a lazy.nvim-installed plugin, which is where to look *first* for
+anything of this shape:
+
+```bash
+grep -rn "buf_get_clients" ~/.local/share/nvim*/lazy/ | grep -v '/doc/'
+# …/lazy/project.nvim/lua/project_nvim/project.lua:16:  local clients = vim.lsp.buf_get_clients()
+```
+
+`ahmedkhalf/project.nvim` is **abandoned**. Its `main` is still at the 3 Apr
+2023 commit — the GitHub API's `pushed_at` reads 2024 because it counts
+non-default branches, so check the branch HEAD, not the repo:
+
+```bash
+git -C ~/.local/share/nvim/lazy/project.nvim log -1 --format='%H %ad %s' --date=short
+curl -s https://api.github.com/repos/ahmedkhalf/project.nvim/commits/main | grep -m1 '"date"'
+```
+
+Meanwhile `programs.neovim` ships 0.12.4, whose runtime still carries the shim:
+
+```bash
+grep -rn buf_get_clients "$VIMRUNTIME/lua/vim/lsp.lua"
+# 1541:function lsp.buf_get_clients(bufnr)
+# 1542:  vim.deprecate('vim.lsp.buf_get_clients()', 'vim.lsp.get_clients()', '0.12')
+```
+
+**Read the third argument as a deadline.** It is the version the function is
+slated to be *removed* in — already behind us. The shim survives on upstream's
+lag, not on support, and the next minor turns this warning into
+`attempt to call a nil value`. So this is a countdown, not cosmetic noise.
+
+### Fix
+
+Move to the maintained fork. `nvim/lua/plugins/project.lua` now reads:
+
+```lua
+return {
+    "DrKJeff16/project.nvim",
+    main = "project",
+    opts = {},
+}
+```
+
+Then on each machine:
+
+```bash
+sudo --set-home darwin-rebuild switch --flake .#<host>
+rm -rf ~/.local/share/nvim/lazy/project.nvim   # with nvim closed
+nvim                                            # lazy installs the fork
+```
+
+Three things worth knowing about that fork choice:
+
+- **`DrKJeff16/project.nvim`** is actively maintained (pushed 12 Nov 2026) and
+  `lua/project/core.lua` uses `vim.lsp.get_clients({ bufnr = bufnr })`. It also
+  drops the deprecated `nvim_buf_get_option` calls upstream still has.
+- **`coffebar/project.nvim`** is the fork most often suggested, and is the
+  wrong answer: stale since Sep 2023 and carrying the *identical* bug on line
+  17. Verify a fork actually fixed the line before adopting it —
+  `curl -s https://raw.githubusercontent.com/<fork>/main/<path> | grep -n get_clients`
+  is cheaper than a switch.
+- **`main = "project"` is required.** The fork renames the module
+  `project_nvim` → `project`; setting it explicitly beats relying on
+  lazy.nvim's derivation of a main module from the plugin name.
+
+The `rm -rf` is deliberate rather than `:Lazy sync`: both repos check out to the
+same `project.nvim` directory name, so a sync asks lazy.nvim to re-point an
+existing git remote. Deleting is deterministic, and the shared name means no
+stale directory is left behind either way.
+
+Defaults confirmed equivalent to the old bare `setup {}` — `manual_mode = false`,
+`scope_chdir = "global"`, `lsp.enabled = true` — so cwd still follows the project
+root. Two harmless leftovers: `:checkhealth project` flags a missing `fd` (needed
+only for session management, which nothing here uses), and the old
+`~/.local/share/nvim/project_nvim/` history is orphaned because the fork writes
+`project_history.json` at the data root instead.
+
+### Prevention
+
+**Grep `~/.local/share/nvim/lazy/` before `nvim/`.** Neovim plugins here are
+lazy.nvim's, not nix's — there is no `lazy-lock.json` in this repo (see the
+comment in both home configs) and `config/lazy.lua` sets
+`checker = { enabled = true }`. So plugin versions sit **outside `flake.lock`**
+and drift independently per machine. A switch cannot fix a plugin, and a machine
+reporting a plugin problem another machine doesn't have is expected, not
+evidence of a per-host config difference.
+
+The corollary: a deprecation warning dates the plugin. `vim.deprecate`'s third
+argument gives you the removal version, so compare it against
+`nvim --version` to decide between "fix now" and "note it" — and prefer an
+audit at **nvim minor bumps** (`nix flake update`), where the removals land,
+over waiting for the breakage.
+
+To sweep the whole plugin set rather than chase one warning:
+
+```bash
+nvim -c 'checkhealth vim.deprecated'
+```
+
 ## Adding new entries
 
 When you hit a failure mode that took non-obvious diagnosis and you

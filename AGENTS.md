@@ -1027,6 +1027,43 @@ nix store that a lockfile revert does not undo. Full entry, including the
 reusable generation-forensics recipe for any "the flake update broke X" claim,
 in `docs/troubleshooting.md`.
 
+### Neovim warns that a `vim.lsp.*` function is deprecated
+
+**Symptom:** `nvim` *occasionally* prints e.g.
+`vim.lsp.buf_get_clients() is deprecated. Run ":checkhealth vim.deprecated" for more information`.
+Hit on `MacBookPro`, 13 Nov 2026 — but `nvim/lua` renders from this repo into
+all three configs, so it is never machine-specific. "Occasionally" is the clue,
+not a complication: `vim.deprecate` warns once per session and the call site ran
+on LSP attach, so it fires on the first buffer with a language server and then
+goes quiet.
+
+**Diagnosis: grep the plugin directory, not this repo.** Neovim plugins here are
+lazy.nvim's, not nix's — no `lazy-lock.json` is managed and
+`nvim/lua/config/lazy.lua` sets `checker = { enabled = true }`, so plugin
+versions sit **outside `flake.lock`** and drift per machine.
+
+```bash
+grep -rn "buf_get_clients" ~/.local/share/nvim*/lazy/ | grep -v '/doc/'
+```
+
+That found `project.nvim` (`ahmedkhalf`, abandoned at its Apr 2023 commit —
+check the *branch* HEAD, as the API's `pushed_at` counts other branches). The
+runtime shim's third argument is a **deadline**: `vim.deprecate(old, new,
+'0.12')` at `$VIMRUNTIME/lua/vim/lsp.lua:1542` names the removal version, which
+0.12.4 is already past, so the next minor makes it a nil-call error.
+
+**Fix:** moved to the maintained fork `DrKJeff16/project.nvim` with
+`main = "project"` (it renames the module `project_nvim` → `project`), then
+`rm -rf ~/.local/share/nvim/lazy/project.nvim` with nvim closed and restart —
+both repos use the same checkout directory name, so deleting beats asking
+`:Lazy sync` to re-point a remote.
+
+**Do not** adopt `coffebar/project.nvim`, the commonly-suggested fork: stale
+since Sep 2023 and carrying the identical bug. Verify a fork fixed the actual
+line (`curl` + `grep` against raw.githubusercontent.com) before switching.
+Sweep the whole plugin set with `nvim -c 'checkhealth vim.deprecated'`, ideally
+at nvim minor bumps. Full entry in `docs/troubleshooting.md`.
+
 ## Important Constraints
 
 - **Architecture:** All configurations target `aarch64-darwin` (Apple Silicon Macs)
