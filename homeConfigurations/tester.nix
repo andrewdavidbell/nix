@@ -232,13 +232,9 @@ let
               export SSH_AUTH_SOCK=~/Library/Group\ Containers/2BUA8C4S2C.com.1password/t/agent.sock
               export OP_BIOMETRIC_UNLOCK_ENABLED=true
 
-              # FluxCD credentials (1Password references)
-              export FLUXCD_TOKEN="op://Private/FluxCD/token"
-              export FLUXCD_USERNAME="op://Private/FluxCD/username"
-
               # k3s cluster token (1Password reference), for the k3s-ansible
-              # playbooks in the turingpi repo. Like FluxCD above this is a
-              # *reference*, not the secret, so it is safe in a public repo —
+              # playbooks in the turingpi repo. This is a *reference*, not
+              # the secret, so it is safe in a public repo —
               # but it only resolves under `op run`/`op inject`. A bare
               # `ansible-playbook` gets the literal "op://..." string.
               export K3S_TOKEN="op://Homelab/k3s-token/password"
@@ -289,7 +285,7 @@ let
             #                repo — it's public — and never in
             #                home.sessionVariables, which renders into a
             #                world-readable /nix/store path. Prefer an
-            #                `op://` reference (as FluxCD above) where the
+            #                `op://` reference (as K3S_TOKEN above) where the
             #                consumer can resolve one; secrets.zsh is for the
             #                tokens that must be a literal value in the
             #                environment.

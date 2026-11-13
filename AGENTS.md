@@ -222,7 +222,7 @@ The following shell configuration is captured in `homeConfigurations/adbell.nix`
 
 - **`home.sessionPath`:** `~/.local/bin` (uv, and Go's `GOBIN` — see below)
 - **`shellAliases`:** `ic` (iCloud Drive), `ob` (Obsidian vault), `src` (local source tree)
-- **`initContent`:** NVM initialisation, `vm()` neovim config selector, `genpass()`, `kdrill()` exam shell, 1Password SSH-agent/biometric env, FluxCD and k3s `op://` refs, 1Password plugins source
+- **`initContent`:** NVM initialisation, `vm()` neovim config selector, `genpass()`, `kdrill()` exam shell, 1Password SSH-agent/biometric env, the k3s `op://` ref, 1Password plugins source
 
 All three home configs end `initContent` with a **machine-local overlay** —
 a `lib.mkAfter` block that sources `~/.config/zsh/local.zsh` and
@@ -540,11 +540,14 @@ Two things that look broken and aren't:
 the versions you actually run outside `flake.lock`. Keep that directory
 absent. If a collection genuinely needs adding, extend the bundle in nix.
 
-`K3S_TOKEN` is exported in `initContent` as an `op://` reference, alongside
-the FluxCD ones, for the `k3s-ansible` playbooks in the `turingpi` repo. It
-is a *reference*, not the secret — safe in this public repo, but it only
-resolves under `op run`/`op inject`; a bare `ansible-playbook` receives the
-literal `op://...` string.
+`K3S_TOKEN` is exported in `initContent` as an `op://` reference, for the
+`k3s-ansible` playbooks in the `turingpi` repo. It is a *reference*, not the
+secret — safe in this public repo, but it only resolves under
+`op run`/`op inject`; a bare `ansible-playbook` receives the literal
+`op://...` string. It is the only such reference left in `adbell.nix` and its
+`tester.nix` mirror: the `FLUXCD_TOKEN`/`FLUXCD_USERNAME` pair that used to sit
+beside it was dropped from both on 13 Nov 2026. `pkgs.fluxcd` itself is still
+installed in both — the `flux` CLI is useful without those variables.
 
 ### Terraform (tfenv)
 
@@ -674,9 +677,10 @@ but runs a **lean work profile**:
   comes from `~/.gitconfig.local`).
 - **No 1Password:** the SSH agent socket, `op` CLI, biometric env, and the `1password`
   antidote plugin/cask are all dropped.
-- **Dropped personal bits:** FluxCD credential refs, the personal `ob` (Obsidian vault)
-  alias, and the M3-only system packages (xld/utm/container). The `ic` (iCloud Drive)
-  and `src` aliases, the `nvm` init, and the neovim `vm()` switcher are kept.
+- **Dropped personal bits:** the personal `ob` (Obsidian vault) alias and the M3-only
+  system packages (xld/utm/container). The `ic` (iCloud Drive) and `src` aliases, the
+  `nvm` init, and the neovim `vm()` switcher are kept. (This list also carried FluxCD
+  credential refs until 13 Nov 2026, when they were dropped from `adbell.nix` too.)
 - **Homebrew** mirrors the M3's handling: the `jundot/omlx` tap plus `nvm`/`omlx` brews (neither
   is in nixpkgs) and `cleanup = "none"` for the same omlx dependency-closure reason.
 - **Work-only cask:** `kiro` (AWS Kiro, the agentic IDE). It is backed by a work AWS
